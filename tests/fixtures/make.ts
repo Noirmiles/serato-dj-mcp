@@ -402,6 +402,50 @@ export function makeRootFixture(
   return path;
 }
 
+export type LocationAssetSeed = {
+  portableId: string;
+  isMissing?: number;
+  fileSize?: number | null;
+};
+
+/**
+ * A per-volume location.sqlite, schema 202. Reuses root-202.sql: dumped
+ * read-only from a real location.sqlite on 2026-10-13 and found structurally
+ * identical for asset/space_asset/container/space (the only difference is
+ * root.sqlite lacks location.sqlite's absent `connection` table, which
+ * neither file has either -- that one lives in master.sqlite). Only the
+ * asset rows a repair test needs are seeded; nothing here touches
+ * container/space, so no FK graph exists to violate by default.
+ */
+export function makeLocationFixture(
+  dir: string,
+  opts: { assets?: LocationAssetSeed[]; revision?: number } = {},
+): string {
+  const path = join(dir, "location.sqlite");
+  const rev = opts.revision ?? 1;
+  const db = new DatabaseSync(path);
+  db.exec("BEGIN");
+  db.exec(readFileSync(join(HERE, "schema", "root-202.sql"), "utf8"));
+  const asset = db.prepare(
+    `INSERT INTO asset (revision, portable_id, file_name, name, is_missing, file_size)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  for (const a of opts.assets ?? []) {
+    const fileName = a.portableId.split("/").pop() ?? a.portableId;
+    asset.run(
+      rev,
+      a.portableId,
+      fileName,
+      fileName,
+      a.isMissing ?? 0,
+      a.fileSize === undefined ? null : a.fileSize,
+    );
+  }
+  db.exec("COMMIT");
+  db.close();
+  return path;
+}
+
 /**
  * master.sqlite and root.sqlite side by side, as a real library directory
  * holds them, with the same tracks joined by portable_id. The write tools
