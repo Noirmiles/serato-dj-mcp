@@ -56,6 +56,12 @@ import {
   previewChangesInput,
   previewChangesOutput,
 } from "./tools/preview-changes.js";
+import {
+  previewRelocate,
+  previewRelocateDescription,
+  previewRelocateInput,
+  previewRelocateOutput,
+} from "./tools/preview-relocate.js";
 import { runSql, runSqlDescription, runSqlInput, runSqlOutput } from "./tools/run-sql.js";
 import {
   searchTracks,
@@ -259,6 +265,23 @@ export function createServer(cli: Cli): Server {
       call: async (raw) =>
         toCallToolResult(
           await auditLibrary(raw, {
+            library: cli.library,
+            roots: cli.roots,
+            cacheDir: cli.cacheDir,
+          }),
+        ),
+    },
+    {
+      descriptor: describeTool(
+        "preview_relocate",
+        "Preview a Serato relocate repair plan",
+        previewRelocateDescription,
+        previewRelocateInput,
+        previewRelocateOutput,
+      ),
+      call: async (raw) =>
+        toCallToolResult(
+          await previewRelocate(raw, {
             library: cli.library,
             roots: cli.roots,
             cacheDir: cli.cacheDir,

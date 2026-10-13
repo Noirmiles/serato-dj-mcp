@@ -107,6 +107,7 @@ describe("server", () => {
       "get_tracks",
       "list_crates",
       "list_libraries",
+      "preview_relocate",
       "search_tracks",
     ]);
   });
@@ -121,6 +122,7 @@ describe("server", () => {
       "get_tracks",
       "list_crates",
       "list_libraries",
+      "preview_relocate",
       "run_sql",
       "search_tracks",
     ]);
@@ -136,6 +138,7 @@ describe("server", () => {
       "get_tracks",
       "list_crates",
       "list_libraries",
+      "preview_relocate",
       "search_tracks",
     ]);
 
@@ -149,6 +152,7 @@ describe("server", () => {
       "list_crates",
       "list_libraries",
       "preview_changes",
+      "preview_relocate",
       "search_tracks",
       "stage_crate",
     ]);
