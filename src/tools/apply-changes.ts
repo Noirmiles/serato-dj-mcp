@@ -106,9 +106,14 @@ export async function applyChanges(
     const running = checkSeratoClosed(lib.masterPath, ctx.probe);
     if (running !== null) return running;
 
-    // Fail-closed: no write proceeds without a verified backup.
-    const backupPaths = await backupLibrary(lib.path, ctx.stateDir, lib.uuid);
-    if (isSeratoError(backupPaths)) return backupPaths;
+    // Fail-closed: no write proceeds without a verified backup. backupLibrary
+    // can also back up extra per-volume stores (not used here, so none are
+    // passed); narrowed to BackupPaths so that extra `stores` field never
+    // reaches the manifest/output, which both still expect exactly root and
+    // master.
+    const backupResult = await backupLibrary(lib.path, ctx.stateDir, lib.uuid);
+    if (isSeratoError(backupResult)) return backupResult;
+    const backupPaths: BackupPaths = { root: backupResult.root, master: backupResult.master };
 
     // Intent recorded before BEGIN (see writeIntent's own doc for why).
     const opId = randomUUID();

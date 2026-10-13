@@ -13,7 +13,7 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it } from "vitest";
 import { backupLibrary, MAX_BACKUPS } from "../../src/apply/backup.js";
 import { isSeratoError } from "../../src/errors.js";
-import { makeLibraryFixture } from "../fixtures/make.js";
+import { makeLibraryFixture, makeLocationFixture } from "../fixtures/make.js";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "serato-backup-"));
 const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("hex");
@@ -66,6 +66,29 @@ describe("backupLibrary", () => {
 
   // Fail-closed: the backup is the only way back, so no backup means no
   // write.
+  // A relocate write touches a volume's own location.sqlite, not just
+  // master/root, so it needs the same backup()-and-verify guarantee master
+  // gets -- a plain copy would miss rows still only in a -wal.
+  it("backs up an extra per-volume store via the SQLite backup() API with integrity check", async () => {
+    const lib = tmp();
+    makeLibraryFixture(lib, { tracks: [] });
+    const volume = tmp();
+    const storePath = makeLocationFixture(volume, {
+      assets: [{ portableId: "Users/x/a.flac" }],
+    });
+    const r = await backupLibrary(lib, tmp(), "lib000000001", [{ path: storePath }]);
+    if (isSeratoError(r)) throw new Error(`unexpected error: ${r.error.message}`);
+    expect(r.stores).toHaveLength(1);
+    expect(existsSync(r.stores[0])).toBe(true);
+    const copy = new DatabaseSync(r.stores[0], { readOnly: true });
+    try {
+      const ok = copy.prepare("PRAGMA integrity_check").get();
+      expect(ok).toEqual({ integrity_check: "ok" });
+    } finally {
+      copy.close();
+    }
+  });
+
   it("fails closed when root.sqlite cannot be copied", async () => {
     const lib = tmp();
     makeLibraryFixture(lib, { tracks: [] });
@@ -86,6 +109,7 @@ describe("backupLibrary", () => {
         lib,
         state,
         "lib000000001",
+        [],
         new Date(Date.UTC(2026, 8, 14, 10, 0, i)),
       );
       if (isSeratoError(r)) throw new Error("unexpected error");
@@ -101,7 +125,7 @@ describe("backupLibrary", () => {
     const state = tmp();
     mkdirSync(join(state, "backups", "other0000000", "20000101-000000-000"), { recursive: true });
     for (let i = 0; i < MAX_BACKUPS + 1; i += 1) {
-      await backupLibrary(lib, state, "lib000000001", new Date(Date.UTC(2026, 8, 14, 10, 0, i)));
+      await backupLibrary(lib, state, "lib000000001", [], new Date(Date.UTC(2026, 8, 14, 10, 0, i)));
     }
     expect(readdirSync(join(state, "backups", "other0000000"))).toHaveLength(1);
   });
@@ -119,7 +143,7 @@ describe("backupLibrary", () => {
       mkdirSync(dir, { recursive: true });
       writeFileSync(join(dir, "dummy"), "x");
     }
-    const r = await backupLibrary(lib, state, "lib000000001", new Date(Date.UTC(2026, 0, 1)));
+    const r = await backupLibrary(lib, state, "lib000000001", [], new Date(Date.UTC(2026, 0, 1)));
     if (isSeratoError(r)) throw new Error(`unexpected error: ${r.error.message}`);
     expect(existsSync(r.root) && existsSync(r.master)).toBe(true);
     const kept = readdirSync(libraryBackups).sort();
