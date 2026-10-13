@@ -38,3 +38,33 @@ describe("matchRepairs — revalidate in place", () => {
     expect(plan.notFound).toEqual([{ locationId: 1, portableId: "Pop/x.mp3" }]);
   });
 });
+
+describe("matchRepairs — moved-under-parent", () => {
+  it("repoints under a new parent when the tree moved (Keron case)", () => {
+    const plan = matchRepairs(
+      [{ locationId: 1, portableId: "Reggae/x.mp3" }],
+      { movedUnder: "Keron Crates" },
+      deps(new Set(["D:\\Keron Crates\\Reggae\\x.mp3"]), {
+        "D:\\Keron Crates\\Reggae\\x.mp3": 7000,
+      }),
+    );
+    expect(plan.repairs).toEqual([
+      {
+        locationId: 1,
+        oldPortableId: "Reggae/x.mp3",
+        newPortableId: "Keron Crates/Reggae/x.mp3",
+        absolutePath: "D:\\Keron Crates\\Reggae\\x.mp3",
+        fileSize: 7000,
+        kind: "moved",
+      },
+    ]);
+  });
+  it("prefers revalidate-in-place over moved when both would match", () => {
+    const plan = matchRepairs(
+      [{ locationId: 1, portableId: "Reggae/x.mp3" }],
+      { movedUnder: "Keron Crates" },
+      deps(new Set(["D:\\Reggae\\x.mp3", "D:\\Keron Crates\\Reggae\\x.mp3"])),
+    );
+    expect(plan.repairs[0].kind).toBe("revalidate");
+  });
+});

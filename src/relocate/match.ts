@@ -82,6 +82,22 @@ export function matchRepairs(
       continue;
     }
 
+    if (params.movedUnder) {
+      const movedId = `${params.movedUnder}/${a.portableId}`;
+      const movedPath = portableIdToAbsolute(root, movedId);
+      if (deps.exists(movedPath)) {
+        plan.repairs.push({
+          locationId: a.locationId,
+          oldPortableId: a.portableId,
+          newPortableId: movedId,
+          absolutePath: movedPath,
+          fileSize: deps.fileSize(movedPath),
+          kind: "moved",
+        });
+        continue;
+      }
+    }
+
     // moved-under-parent and filename-search added in Tasks 2 and 3
     plan.notFound.push({
       locationId: a.locationId,
