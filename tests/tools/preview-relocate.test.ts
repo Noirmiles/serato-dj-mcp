@@ -96,8 +96,11 @@ describe("preview_relocate", () => {
       tracks: [{ externalId: 1, portableId: "Pop/x.mp3", name: "X", isMissing: 0 }],
     });
     const db = new DatabaseSync(masterPath);
+    // "1111...1111" is one of repo-hygiene.test.ts's two allowed synthetic
+    // ids -- location 2 already carries "2222...2222" (see make.ts), so this
+    // stays distinct without introducing a third, disallowed, id.
     db.prepare("INSERT INTO location (id, path, uuid, revision) VALUES (99, NULL, ?, 1)").run(
-      Buffer.from("33333333333333333333333333333333", "hex"),
+      Buffer.from("11111111111111111111111111111111", "hex"),
     );
     db.prepare(
       `INSERT INTO asset (location_id, external_id, portable_id, file_name, name, is_missing,

@@ -117,34 +117,54 @@ measured, and this section keeps the two apart.
 
 ### Measured about Serato
 
-One per-drive store, a `location.sqlite` that Serato created in `<drive>:\_Serato_\Library` on a
-Windows machine, read on 2026-10-12. It is not known which Serato version wrote it.
+A per-drive store, `location.sqlite`, that Serato created in `<drive>:\_Serato_\Library` on a
+Windows machine, read on 2026-10-12 (Serato version not known). Then, separately, a real Serato
+DJ Pro 4.0.0 install on Windows 11, library schema 202, measured 2026-10-12 -- `master.sqlite` and
+`root.sqlite` this time, not just a per-drive store.
 
-- Its schema `user_version` is 202 and its journal mode is `delete`.
-- `asset.portable_id` is relative to the drive's root, written with forward slashes and no
+- Its schema `user_version` is 202. `location.sqlite`'s journal mode is `delete`; `master.sqlite`'s
+  is `wal` -- the same split as `root.sqlite`/`master.sqlite` on macOS.
+- `asset.portable_id` is relative to its volume's root, written with forward slashes and no
   leading slash: a file at `D:\Some Folder\Artist - Title.mp3` is `Some Folder/Artist - Title.mp3`.
-- It has no `connection` table and no `lock` table. Those belong to `master.sqlite`.
+  Confirmed again from the real `master.sqlite`'s own rows, not just the per-drive store.
+- The main library is at `%LOCALAPPDATA%\Serato\Library` (`master.sqlite` and `root.sqlite` live
+  there) -- confirmed against an installation, not just cited from Serato's support article
+  "Backing up and moving your library".
+- `connection.database_uri` mixes separators within one `master.sqlite`: the row for an external
+  drive reads `D:/_Serato_/Library/location.sqlite` (forward slashes), while the two rows for the
+  local library read `C:\Users\<user>\...\root.sqlite` and `...\spotify.sqlite` (backslashes).
+  `volumeRootFromDatabaseUri` (`src/paths.ts`) and `storePathFromUri` (`src/apply/location.ts`)
+  accept either separator for exactly this reason -- a parser that assumed one would have missed
+  the other half of the same file's rows. A `\\server\share` uri and a `root.sqlite` whose
+  `database_uri` names a different drive than the one it is installed on are still unseen.
+- The `lock` table carries exactly one row while Serato runs: `owner_process_name` is
+  `'Serato DJ Pro.exe'`, `owner_process_id` the PID of that process. The table is empty after a
+  clean exit. A crash (the process killed rather than quit) leaves that row behind -- the same
+  staleness macOS showed for pid 73438 (see "Is Serato running" above), now seen on Windows too.
+  The server's own `tasklist`-based comparison (ignoring a directory, a trailing `.exe` and case,
+  and matching any live process whose image name starts with `serato`) was written against this
+  name.
+- `master.sqlite` is authoritative for what Serato displays, and is kept in sync with every
+  per-volume store: a relocate repair written to both a store and `master.sqlite` reads back as
+  found in the Serato GUI.
+- On open, Serato runs BOTH `PRAGMA integrity_check` AND `PRAGMA foreign_key_check` against
+  `master.sqlite`, and refuses to open the library if either reports a problem. `foreign_key_check`
+  catches an orphaned row that a plain `integrity_check` passes clean -- which is why
+  `src/apply/relocate.ts` runs both before every commit, not integrity_check alone. A refusal of
+  this kind leaves a `master.sqlite.failed_integrity_check` marker file beside it.
+- A file that is present on disk is re-flagged missing on the next launch if its asset row's
+  `file_size` is 0, even though `is_missing` was already 0 -- the reason `apply_relocate` writes a
+  real `file_size` into every repair rather than only clearing `is_missing`.
 
 ### Not measured about Serato
 
-No `master.sqlite` or `root.sqlite` written by Serato on Windows has been examined, and the server
-has never run beside Serato there. Each of these is an assumption the code makes:
-
-- **`connection.database_uri`.** Assumed to be a plain path with a drive letter or a
-  `\\server\share` prefix, with either separator: `D:\_Serato_\Library\location.sqlite` gives the
-  volume root `D:\`, and a `root.sqlite` gives the root of the drive it is on, on the further
-  assumption that the main library's `portable_id` is relative to that drive the way a per-drive
-  store's is. A path in another form gives no root for that location.
-- **The main library's folder.** `%LOCALAPPDATA%\Serato\Library`, from Serato's support article
-  "Backing up and moving your library", not from an installation.
-- **The `lock` table.** Whether Serato on Windows writes a row there, and what it puts in
-  `owner_process_name`. The server compares that name with the image name `tasklist` reports,
-  ignoring a directory, a trailing `.exe` and case, and also counts any live process behind a lock
-  row whose image name starts with `serato`. The name of Serato's executable was not checked
-  either.
-- **Everything about a write.** That Serato on Windows picks up a crate written to `root.sqlite`
-  the way it does on macOS, where it exports the crate file, and what it does with a crate name
-  that Windows does not allow as a file name (`? * " < > |` and others).
+- **Everything about a write other than a relocate repair.** That Serato on Windows picks up a
+  *new crate* written to `root.sqlite` the way it does on macOS, where it exports the crate file,
+  and what it does with a crate name that Windows does not allow as a file name
+  (`? * " < > |` and others).
+- **A `\\server\share` `database_uri`, and a `root.sqlite` whose `database_uri` names a drive
+  other than the one it is installed on.** Only a plain drive-letter path, in either separator
+  convention, has been seen.
 
 ### Measured about Windows itself
 

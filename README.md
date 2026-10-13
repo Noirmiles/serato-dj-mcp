@@ -154,27 +154,41 @@ Everything this server assumes about the Serato library is written down in
 against the generated demo library (`npm run demo-library`) — `list_libraries`, `list_crates`,
 `search_tracks`, `audit_library` with and without the disk check, and with `--allow-writes` a
 crate through `stage_crate`, `preview_changes` and `apply_changes`. That exercises the server's
-own handling of Windows paths, files, locks and processes. One fact comes from a real library: in
-a per-drive store (`location.sqlite`, schema 202) that Serato created on a Windows drive, a
-track's path is recorded relative to the drive, with forward slashes.
+own handling of Windows paths, files, locks and processes.
+
+Also measured directly against a real Serato DJ Pro 4.0.0 install on Windows 11, library schema
+202, on 2026-10-12:
+
+- The main library is at `%LOCALAPPDATA%\Serato\Library` (`master.sqlite` and `root.sqlite`) —
+  confirmed from the installation itself, not just from Serato's support article on backing up a
+  library.
+- `connection.database_uri` mixes separators within one `master.sqlite`: the row for an external
+  drive used forward slashes (`D:/_Serato_/Library/location.sqlite`), while the two rows for the
+  local library used backslashes (`C:\Users\...\root.sqlite`, `...\spotify.sqlite`). The server
+  accepts either, as it already did before this was confirmed.
+- `asset.portable_id` is relative to its volume's root, forward slashes, no leading slash — the
+  same form a per-drive `location.sqlite` had already shown, now confirmed from a real
+  `master.sqlite` too.
+- The "is Serato running" check compares against the real thing: the `lock` table carries exactly
+  one row while Serato runs, naming `owner_process_name: 'Serato DJ Pro.exe'` and the app's own
+  PID; it is empty after a clean exit, and a crash leaves a stale row behind — the lock table on
+  Windows behaves the same way it does on macOS.
+- Serato itself refuses to open `master.sqlite` if either `PRAGMA integrity_check` or
+  `PRAGMA foreign_key_check` finds a problem (writing a `master.sqlite.failed_integrity_check`
+  marker when it does), and re-flags a present file as missing on the next launch if its row's
+  `file_size` is 0 even though `is_missing` was already clear. `apply_relocate` runs both checks
+  before every commit and always writes a real `file_size`, for exactly this reason.
 
 **Not verified — treat each as an assumption:**
 
-- **A Serato DJ installation on Windows.** The server has never read a library Serato wrote on
-  Windows' own disk, and has never written a crate that Serato on Windows then opened.
-- **Where Serato keeps its library.** `%LOCALAPPDATA%\Serato\Library` is taken from Serato's
-  support article on backing up a library, not from an installation.
-- **How Serato records each drive.** Track paths are built from a `database_uri` column whose
-  Windows form has not been seen. The server assumes a plain path such as
-  `D:\_Serato_\Library\location.sqlite`, with either kind of slash. If the real form differs,
-  tracks are listed without a full path, the on-disk check of `audit_library` skips them with a
-  `location_root_unknown` warning, and `stage_crate` may refuse with `library_disk_unknown`.
-- **The "is Serato running" check.** It compares the process name `tasklist` reports with the
-  name in Serato's lock table, whose Windows form has not been seen either. Names are compared
-  without `.exe` and without regard to case, any running program whose name starts with "Serato"
-  counts if the lock table points at it, and a process that cannot be identified refuses the
-  write. Whether Serato on Windows fills that table as it does on macOS is unknown: **quit Serato
-  yourself before `apply_changes`, and keep your own backup of the library.**
+- **A Serato DJ installation on Windows picking up a server write.** The facts above come from
+  reading a real installation; the server has not yet written a crate or a relocate repair that
+  Serato on Windows then opened and re-displayed.
+- **A `\\server\share` `database_uri`, or a `root.sqlite` whose `database_uri` names a drive
+  other than the one it is installed on.** Only a plain drive-letter path, in either separator
+  convention, has been seen. If the real form differs, tracks are listed without a full path, the
+  on-disk check of `audit_library` skips them with a `location_root_unknown` warning, and
+  `stage_crate` may refuse with `library_disk_unknown`.
 - **The Claude Desktop extension**, which is built for macOS only. On Windows use the `npx` setup.
 - **Any MCP client on Windows.** The server was driven by a test client; Claude Desktop, Claude
   Code, Cursor and VS Code were not tried there.
@@ -226,6 +240,12 @@ exist cannot be called by mistake:
   than having all its tracks declared missing.
 - `run_sql` — one read-only `SELECT` against a snapshot copy. Registered only
   with `--allow-raw-sql`, because it returns raw rows with no path redaction.
+- `preview_relocate` — preview a repair plan for tracks Serato has flagged missing, without
+  writing anything. Reports a bucketed plan: `repairs` (found, split into `revalidate` — the file
+  was at its recorded path all along — `moved` — found under a `moved_under` parent folder — and
+  `search` — found by filename under `search_folder`), `ambiguous` (several same-named candidates,
+  none applied), `not_found`, and `volume_unavailable` (the track's drive has no known root,
+  usually because it is not connected). Call `apply_relocate` to act on the plan.
 
 With `--allow-writes`:
 
@@ -234,6 +254,12 @@ With `--allow-writes`:
 - `preview_changes` — show what is staged, with `format: "detail"` down to each track.
 - `apply_changes` — write everything staged, all or nothing. Refused while Serato is running.
 - `discard_changes` — drop one staged crate, or all of them.
+- `apply_relocate` — write the repair plan `preview_relocate` showed for the current library
+  state. Refused while Serato is running. Both library databases are backed up first, plus every
+  per-volume store (`location.sqlite`) a repair touches. Pass `generation` from a recent
+  `preview_relocate` call so a plan computed against an older library state is refused rather
+  than applied blind. Restart Serato afterwards to see the repairs — see
+  [Writing to the library](#writing-to-the-library).
 
 ## Options
 
@@ -284,6 +310,27 @@ backup was taken.
 Nested crates are not supported: a crate created this way inside another crate is deleted by
 Serato when it next syncs, so every crate goes to the top level.
 
+### Relocating missing tracks
+
+`apply_relocate` repairs tracks Serato has flagged missing by pointing them at the file's new
+location, when `preview_relocate` found one. It needs `--allow-writes` and, like `apply_changes`,
+refuses while Serato is running — relocating is a write to `master.sqlite` itself, the file
+Serato's own GUI has open, not just to `root.sqlite`.
+
+What it writes: for each repair, the track's row in `master.sqlite` AND in the per-volume store
+(`location.sqlite` on an external drive, `root.sqlite` for the main library) that volume's
+connection names — both get the new `portable_id`, `is_missing` cleared, and `file_size` set to
+the real file's size. A repair whose new path collides with a track the library already has under
+that location is skipped and reported in `skipped.duplicate` rather than applied. Nothing is
+ever created at a 0-byte path: a store that does not exist, or a `master.sqlite` that does not
+exist, refuses the whole call instead of materializing an empty database.
+
+Before every write, both library databases are backed up as described above, AND every
+per-volume store a repair touches is backed up alongside them — the paths come back in
+`backup_paths.stores`. Restart Serato afterwards: the repaired tracks show up as found only once
+Serato re-reads `master.sqlite`. As with crate writes, **there is no undo tool** — restoring means
+copying the backed-up files back with Serato closed, using `backup_paths` the same way.
+
 ## Privacy
 
 The same, as a standalone policy with the source file behind each statement:
@@ -302,7 +349,9 @@ The same, as a standalone policy with the source file behind each statement:
     `%LOCALAPPDATA%\serato-dj-mcp\State`) holds staged crates, a manifest of every write, lock
     files, and backups of your library databases. Only used with `--allow-writes`. Deleting it
     deletes those backups.
-  - With `--allow-writes`, `apply_changes` writes new crates into Serato's `root.sqlite`.
+  - With `--allow-writes`, `apply_changes` writes new crates into Serato's `root.sqlite`, and
+    `apply_relocate` writes repaired paths into `master.sqlite` and the per-volume store
+    (`location.sqlite` or `root.sqlite`) each repair belongs to.
 - **What leaves your computer is up to your MCP client.** Tool results — track titles, artists,
   crate names, file paths — go to your assistant, and from there to whichever model provider the
   client uses. Track paths under your home folder are shortened to `~`; `list_libraries`,
@@ -356,6 +405,14 @@ Read this before deciding what to trust.
   library, or a Serato in the middle of its own write, has not been tried.
 - **There is no undo tool.** Undoing a write means restoring the backups by hand, as described
   above.
+- **Relocating is new and experimental, same caveat as crate writing.** `apply_relocate` was
+  worked out against generated test libraries and a real Serato DJ Pro 4.0.0 install on Windows;
+  it has not been exercised across Serato updates or on a large, heavily multi-volume library.
+  Keep your own backups as well.
+- **A relocate repair only clears Serato's missing flag and fixes the path and size.** It does not
+  touch cue points, loops, play history or any other metadata, and it never creates, moves or
+  deletes a file on disk — it only updates what Serato's databases say about one that is already
+  there.
 
 ## Principles
 

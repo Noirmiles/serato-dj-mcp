@@ -7,12 +7,20 @@ changes.
 
 ## [Unreleased]
 
-The server now runs on Windows. That is verified on generated test libraries only: it has not
-been run against a Serato installation on Windows, and the README's
-[Windows](README.md#windows) section lists what is still an assumption.
+The server now runs on Windows, and can repair tracks Serato has flagged missing. Most of this is
+verified on generated test libraries only; a handful of specific facts about `master.sqlite` and
+the per-volume stores were also measured directly against a real Serato DJ Pro 4.0.0 install on
+Windows, on 2026-10-12. The README's [Windows](README.md#windows) section says which is which.
 
 ### Added
 
+- `preview_relocate`, and with `--allow-writes` `apply_relocate`: find and repair tracks Serato
+  has flagged missing, by revalidating a file still at its recorded path, matching it under a new
+  parent folder (`moved_under`), or searching for it by filename (`search_folder`). A repair
+  writes the new path, clears the missing flag and sets the file size in both `master.sqlite` and
+  the per-volume store (`location.sqlite` or `root.sqlite`) the track belongs to.
+  `apply_relocate` backs up every store it touches alongside both library databases, the same as
+  `apply_changes`, and is refused while Serato is running.
 - Windows support for the server's own handling of files, paths and processes, verified on
   2026-10-12 on Windows 11 by the test suite (Node.js 22.16.0, 24.21.0 and 25.6.0) and by driving
   the built server over stdio against the demo library:
@@ -24,6 +32,14 @@ been run against a Serato installation on Windows, and the README's
     folder is shortened to `~\...` whatever its case or slashes.
   - The check that Serato is closed reads the process name from `tasklist`, since Windows has
     no `ps`.
+- Also measured directly against a real Serato DJ Pro 4.0.0 install on Windows, on 2026-10-12:
+  `connection.database_uri` mixes separators within one `master.sqlite` (an external drive's row
+  used forward slashes, the local library's rows used backslashes, both already handled); the
+  main library is confirmed at `%LOCALAPPDATA%\Serato\Library`; the `lock` table's
+  `owner_process_name` is `'Serato DJ Pro.exe'` while it runs and empty after a clean exit; Serato
+  refuses to open `master.sqlite` on a `foreign_key_check` violation as well as an
+  `integrity_check` one; and a present file is re-flagged missing if its row's `file_size` is 0.
+  See [docs/serato-4x-notes.md](docs/serato-4x-notes.md#windows) for the detail.
 - `npm run demo-library` works on a Windows drive.
 - CI runs lint and the test suite on `windows-latest` as well.
 
@@ -47,10 +63,11 @@ been run against a Serato installation on Windows, and the README's
 
 ### Not verified
 
-- A Serato DJ installation on Windows: reading a library it wrote, and Serato opening a crate
-  this server wrote.
-- The form of `connection.database_uri` and of the `lock` table's process name on Windows; both
-  are assumed, and the code and tests say where.
+- A Serato DJ installation on Windows picking up a server write: Serato opening a crate, or
+  re-displaying a track, this server wrote there.
+- A `\\server\share` `database_uri`, or a `root.sqlite` whose `database_uri` names a drive other
+  than the one it is installed on; only a plain drive-letter path, in either separator
+  convention, has been seen.
 - The Claude Desktop extension on Windows, which is still built for macOS only, and every MCP
   client on Windows other than the test client.
 
