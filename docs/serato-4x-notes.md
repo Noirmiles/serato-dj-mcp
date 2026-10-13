@@ -145,8 +145,14 @@ DJ Pro 4.0.0 install on Windows 11, library schema 202, measured 2026-10-12 -- `
   and matching any live process whose image name starts with `serato`) was written against this
   name.
 - `master.sqlite` is authoritative for what Serato displays, and is kept in sync with every
-  per-volume store: a relocate repair written to both a store and `master.sqlite` reads back as
-  found in the Serato GUI.
+  per-volume store. The write SHAPE a relocate performs was observed to work during a manual
+  library recovery on 2026-10-12: editing both a per-volume store and `master.sqlite` by hand to
+  repoint a missing track's `portable_id`, clear `is_missing`, and populate a real `file_size`
+  caused those tracks to re-display as FOUND in the Serato GUI after a relaunch. (The
+  `file_size = 0` re-flag and the `foreign_key_check`-on-open facts below were observed during
+  that same hand recovery.) The `apply_relocate` tool performs exactly those writes, so it is
+  EXPECTED to re-display as found -- but the tool itself has not yet been run against a live
+  Serato GUI, so that specific tool-to-GUI path is unconfirmed (see "Not measured" below).
 - On open, Serato runs BOTH `PRAGMA integrity_check` AND `PRAGMA foreign_key_check` against
   `master.sqlite`, and refuses to open the library if either reports a problem. `foreign_key_check`
   catches an orphaned row that a plain `integrity_check` passes clean -- which is why
@@ -158,10 +164,12 @@ DJ Pro 4.0.0 install on Windows 11, library schema 202, measured 2026-10-12 -- `
 
 ### Not measured about Serato
 
-- **Everything about a write other than a relocate repair.** That Serato on Windows picks up a
-  *new crate* written to `root.sqlite` the way it does on macOS, where it exports the crate file,
-  and what it does with a crate name that Windows does not allow as a file name
-  (`? * " < > |` and others).
+- **Serato on Windows picking up any write this server makes, through its GUI.** Neither tool has
+  been run against a live Serato install on Windows: not `apply_relocate` (the hand recovery above
+  confirmed the write *shape* re-displays as found, not the tool), and not a *new crate* written
+  to `root.sqlite` -- whether Serato picks that up the way it does on macOS, where it exports the
+  crate file, and what it does with a crate name Windows does not allow as a file name
+  (`? * " < > |` and others), are both unconfirmed.
 - **A `\\server\share` `database_uri`, and a `root.sqlite` whose `database_uri` names a drive
   other than the one it is installed on.** Only a plain drive-letter path, in either separator
   convention, has been seen.
