@@ -145,6 +145,7 @@ describe("server", () => {
     const s = createServer(cli({ allowWrites: true }));
     expect(registeredToolNames(s).sort()).toEqual([
       "apply_changes",
+      "apply_relocate",
       "audit_library",
       "discard_changes",
       "get_crate_tracks",

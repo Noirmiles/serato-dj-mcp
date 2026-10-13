@@ -15,6 +15,12 @@ import {
   applyChangesOutput,
 } from "./tools/apply-changes.js";
 import {
+  applyRelocate,
+  applyRelocateDescription,
+  applyRelocateInput,
+  applyRelocateOutput,
+} from "./tools/apply-relocate.js";
+import {
   auditLibrary,
   auditLibraryDescription,
   auditLibraryInput,
@@ -360,6 +366,17 @@ export function createServer(cli: Cli): Server {
           IDEMPOTENT_DESTRUCTIVE_WRITE,
         ),
         call: async (raw) => toCallToolResult(await discardChanges(raw, writeCtx)),
+      },
+      {
+        descriptor: describeTool(
+          "apply_relocate",
+          "Apply a Serato relocate repair plan",
+          applyRelocateDescription,
+          applyRelocateInput,
+          applyRelocateOutput,
+          DESTRUCTIVE_WRITE,
+        ),
+        call: async (raw) => toCallToolResult(await applyRelocate(raw, writeCtx)),
       },
     );
   }

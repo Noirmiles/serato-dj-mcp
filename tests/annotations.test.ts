@@ -86,6 +86,12 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Discard staged changes",
   },
+  apply_relocate: {
+    readOnly: false,
+    destructive: true,
+    idempotent: false,
+    title: "Apply a Serato relocate repair plan",
+  },
 };
 
 describe("tool annotations over tools/list", () => {
