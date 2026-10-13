@@ -1,5 +1,6 @@
 import { DatabaseSync } from "node:sqlite";
 import { err, type SeratoError } from "../errors.js";
+import { WINDOWS_DRIVE_PATH, WINDOWS_UNC_PATH } from "../paths.js";
 import { isSqliteBusy } from "./sqlite.js";
 
 /** SQLITE_BUSY becomes busy with retry_after_ms equal to this. */
@@ -11,11 +12,6 @@ export const STORE_BUSY_TIMEOUT_MS = 3000;
 const SQLITE_CONSTRAINT_UNIQUE = 2067;
 
 export type StoreRepair = { oldPortableId: string; newPortableId: string; fileSize: number };
-
-/** `D:\...` or `D:/...`. No absolute POSIX path starts this way. */
-const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
-/** `\\server\share\...`, for a store on a network share. */
-const WINDOWS_UNC_PATH = /^\\\\[^\\/]+[\\/][^\\/]+[\\/]/;
 
 /**
  * The real filesystem path to a volume's store, from the database_uri a

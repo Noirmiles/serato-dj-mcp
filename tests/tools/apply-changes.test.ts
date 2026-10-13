@@ -99,6 +99,9 @@ describe("apply_changes", () => {
     expect(crates().map((c) => c.name)).toEqual(["Gigs 2026"]);
     expect(r.backup_paths !== null && existsSync(r.backup_paths.root)).toBe(true);
     expect(r.backup_paths !== null && existsSync(r.backup_paths.master)).toBe(true);
+    // apply_changes never touches a volume store, so backup_paths must stay
+    // exactly {root, master} -- no `stores` key, unlike apply_relocate's.
+    expect(r.backup_paths).not.toHaveProperty("stores");
     const [entry] = readManifest(ctx.stateDir, libraryId);
     expect(entry.commit_state).toBe("committed");
     expect(entry.crates[0].container_id).toBe(r.applied[0].container_id);

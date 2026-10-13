@@ -185,6 +185,29 @@ function writeMaster(input: RelocateInput): RelocateOutcome | SeratoError {
       // SQLite has already rolled back on its own here.
       return notCommitted("commit", `COMMIT failed and the write was rolled back: ${String(e)}`);
     }
+
+    // On a WAL-mode master, the committed rows live in the -wal file until a
+    // checkpoint folds them back into master.sqlite itself; verifyRelocate
+    // below reopens on a fresh connection, and a read-only connection cannot
+    // be relied on to see a WAL that was never checkpointed. TRUNCATE also
+    // resets the -wal file to zero length, which keeps the on-disk footprint
+    // the same as before this write. On a rollback-journal (non-WAL) master
+    // this PRAGMA is a documented no-op, so it is safe to run unconditionally
+    // rather than branching on journal_mode.
+    try {
+      db.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    } catch (e) {
+      // The write already committed: a checkpoint failure (e.g. another
+      // reader blocking it) does not undo that, so it is reported the same
+      // way verifyRelocate reports a readback miss rather than invented as a
+      // new error shape.
+      return err(
+        "write_failed_committed_unverified",
+        `master.sqlite committed but could not be checkpointed: ${String(e)}`,
+        { stage: "wal_checkpoint" },
+      );
+    }
+
     return { repaired, duplicate };
   } catch (e) {
     rollback();

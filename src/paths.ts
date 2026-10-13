@@ -50,9 +50,9 @@ const WINDOWS_LOCATION_DB_SUFFIX = "\\_Serato_\\Library\\location.sqlite";
 
 /** `D:\...` or `D:/...`. No absolute POSIX path starts this way, so testing
  *  for it first leaves every POSIX uri on the code path it always had. */
-const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
+export const WINDOWS_DRIVE_PATH = /^[A-Za-z]:[\\/]/;
 /** `\\server\share\...`, for a store on a network share. */
-const WINDOWS_UNC_PATH = /^\\\\[^\\/]+[\\/][^\\/]+[\\/]/;
+export const WINDOWS_UNC_PATH = /^\\\\[^\\/]+[\\/][^\\/]+[\\/]/;
 
 /** A volume root this module produced from a Windows uri: `D:\`, `D:\sub`
  *  or `\\server\share`. */

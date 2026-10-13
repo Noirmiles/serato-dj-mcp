@@ -97,10 +97,16 @@ export function makeMasterFixture(
      *  them as crate members, and that claim needs a fixture that can
      *  express it. */
     prepareTrackExternalIds?: number[];
+    /** Production master.sqlite is WAL journal mode; every other fixture
+     *  default stays rollback-journal (SQLite's own default) so existing
+     *  tests are unaffected. Set this to exercise code that only matters on
+     *  WAL, e.g. the relocate engine's post-COMMIT checkpoint. */
+    journalMode?: "WAL";
   } = {},
 ): string {
   const path = join(dir, "master.sqlite");
   const db = new DatabaseSync(path);
+  if (opts.journalMode === "WAL") db.exec("PRAGMA journal_mode = WAL");
   // One transaction for the whole fixture, committed just before close().
   // Left to autocommit, every statement below is its own commit, and each
   // commit flushes to disk. Measured 2026-10-12 on Windows 11 with Node
