@@ -68,3 +68,35 @@ describe("matchRepairs — moved-under-parent", () => {
     expect(plan.repairs[0].kind).toBe("revalidate");
   });
 });
+
+const walkDeps = (files: string[]): MatchDeps => ({
+  volumeRoots: new Map([[1, "D:\\"]]),
+  exists: () => false,
+  fileSize: () => 4096,
+  walk: () => files,
+});
+
+describe("matchRepairs — filename search", () => {
+  it("repoints to the single same-named candidate found by search", () => {
+    const plan = matchRepairs(
+      [{ locationId: 1, portableId: "Pop/song.mp3" }],
+      { searchFolder: "D:\\Music" },
+      walkDeps(["D:\\Music\\Archive\\song.mp3"]),
+    );
+    expect(plan.repairs[0]).toMatchObject({
+      newPortableId: "Music/Archive/song.mp3",
+      kind: "search",
+    });
+  });
+
+  it("reports ambiguous when two same-named files exist", () => {
+    const plan = matchRepairs(
+      [{ locationId: 1, portableId: "Pop/song.mp3" }],
+      { searchFolder: "D:\\Music" },
+      walkDeps(["D:\\Music\\A\\song.mp3", "D:\\Music\\B\\song.mp3"]),
+    );
+    expect(plan.repairs).toEqual([]);
+    expect(plan.ambiguous[0]).toMatchObject({ portableId: "Pop/song.mp3" });
+    expect(plan.ambiguous[0].candidates).toHaveLength(2);
+  });
+});
