@@ -25,6 +25,10 @@ been run against a Serato installation on Windows, and the README's
   - The check that Serato is closed reads the process name from `tasklist`, since Windows has
     no `ps`.
 - `npm run demo-library` works on a Windows drive.
+- A read-only parser for the tag-length-value records of Serato 3.x `database V2` and legacy
+  `.crate` files (`src/legacy/`), with `parseCrateFile` for crates. It is not wired into any tool
+  and writes nothing. Tested only against generated files, not files Serato wrote; it fails
+  closed on anything it does not recognise, under the new error code `malformed_file`.
 - CI runs lint and the test suite on `windows-latest` as well.
 
 ### Changed

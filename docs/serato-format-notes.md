@@ -173,6 +173,11 @@ For a crate on the boot disk, whether `ptrk` is relative to the filesystem root 
 home, and how it is written on Windows (drive letter, separator), is not documented in any source
 read: unverified.
 
+`src/legacy/records.ts` and `src/legacy/crate-file.ts` read this layout (`parseRecords`,
+`parseCrateFile`). They are read-only, are not wired into any tool, and are tested only against
+files generated from the layout above, not files Serato wrote. They refuse a smart-crate version
+and any `s` payload that is not 2 or 4 bytes, because the sources disagree there.
+
 serato-tools also names a crate at `Subcrates/Serato Stems/Stems.crate` (published by
 serato-tools, no prose).
 
