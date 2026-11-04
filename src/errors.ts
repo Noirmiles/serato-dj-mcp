@@ -21,6 +21,7 @@ export const ERROR_CODES = {
   write_failed_not_committed: "write_failed_not_committed",
   write_failed_committed_unverified: "write_failed_committed_unverified",
   busy: "busy",
+  malformed_file: "malformed_file",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
