@@ -13,6 +13,12 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `get_track_markers`, a read-only tool returning a track's cue points (index, position in ms,
+  colour, name), saved loops (start, end, locked, name), track colour and BPM-lock flag from the
+  `Serato Markers2` tag in the audio file: MP3 and AIFF (ID3v2 `GEOB`) and FLAC
+  (`SERATO_MARKERS_V2`). Unsupported formats, missing files and missing tags give a warning, not
+  an error. Never writes to audio files. Tested on synthetic fixtures built from the published
+  format notes only; not yet compared with files written by Serato.
 - `serato_inspect`, a read-only tool reporting the library's layout: which of `master.sqlite`,
   `root.sqlite` and `location.sqlite` exist, journal mode and `user_version` of the snapshot,
   table names, row counts, the state of the `lock` table and up to 5 stored-path samples with
