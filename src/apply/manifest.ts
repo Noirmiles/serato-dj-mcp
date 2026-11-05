@@ -8,6 +8,9 @@ export type ManifestCrate = {
   staged_id: string;
   name: string;
   track_count: number;
+  /** Present only for tracks appended to an existing crate; track_count is
+   *  then the number staged, which may include tracks already in the crate. */
+  mode?: "append";
   /** null until committed: the id exists only after the INSERT. */
   container_id: number | null;
 };

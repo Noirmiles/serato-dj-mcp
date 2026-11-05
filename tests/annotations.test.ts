@@ -74,6 +74,12 @@ const EXPECTED: Record<
   },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
+  stage_add_to_crate: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Stage tracks to add to an existing crate",
+  },
   preview_changes: {
     readOnly: true,
     destructive: false,

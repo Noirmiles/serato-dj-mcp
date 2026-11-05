@@ -13,6 +13,14 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `stage_add_to_crate` (with `--allow-writes`): stage appending tracks to an existing top-level
+  crate, through the same stage, `preview_changes`, `apply_changes` flow as `stage_crate` — backup
+  first, `serato.revision` bumped before the `container_asset` rows, refused while Serato runs.
+  Tracks the crate already holds are skipped (de-duplicated in code, since `container_asset` has no
+  unique constraint) and reported. `preview_changes` and `apply_changes` results mark appends with
+  `mode: "append"`. The stage file gains an optional `mode` field, so existing stage files still
+  load. Tested on generated fixtures only; not yet checked against Serato picking up an appended
+  crate.
 - `get_track_markers`, a read-only tool returning a track's cue points (index, position in ms,
   colour, name), saved loops (start, end, locked, name), track colour and BPM-lock flag from the
   `Serato Markers2` tag in the audio file: MP3 and AIFF (ID3v2 `GEOB`) and FLAC

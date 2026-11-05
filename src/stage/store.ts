@@ -23,6 +23,11 @@ export type StagedCrate = {
   name: string;
   tracks: StagedTrack[];
   staged_at: string;
+  /** Absent means "create a new crate", which is what every stage written
+   *  before stage_add_to_crate holds. "append" adds `tracks` to the existing
+   *  top-level crate called `name`. Optional so the stage format stays
+   *  schema_version 1 and old stage files load unchanged. */
+  mode?: "create" | "append";
 };
 
 /**
@@ -66,6 +71,7 @@ const stagedCrateSchema = z.object({
   name: z.string().min(1),
   tracks: z.array(stagedTrackSchema).min(1),
   staged_at: z.string(),
+  mode: z.enum(["create", "append"]).optional(),
 });
 
 const stageSchema = z.object({

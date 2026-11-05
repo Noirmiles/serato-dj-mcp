@@ -14,7 +14,7 @@ Usage: serato-dj-mcp [options]
   --cache-dir <dir>    Where snapshots go (safe to delete)
   --state-dir <dir>    Where backups and manifests go (NOT safe to delete)
   --allow-raw-sql      Register run_sql
-  --allow-writes       Register stage_crate, preview_changes, apply_changes, discard_changes
+  --allow-writes       Register stage_crate, stage_add_to_crate, preview_changes, apply_changes, discard_changes
   -h, --help           Show this help
   -V, --version        Show the version
 

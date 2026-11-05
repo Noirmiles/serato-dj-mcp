@@ -76,6 +76,12 @@ import {
   seratoInspectOutput,
 } from "./tools/serato-inspect.js";
 import {
+  stageAddToCrate,
+  stageAddToCrateDescription,
+  stageAddToCrateInput,
+  stageAddToCrateOutput,
+} from "./tools/stage-add-to-crate.js";
+import {
   stageCrate,
   stageCrateDescription,
   stageCrateInput,
@@ -92,7 +98,7 @@ const RO = {
   openWorldHint: false,
 } as const;
 
-/** stage_crate only adds to the stage file -- never an overwrite or a
+/** stage_crate and stage_add_to_crate only add to the stage file -- never an overwrite or a
  *  delete -- so destructiveHint stays false; a repeat is refused, not
  *  repeated, but it is not advertised as idempotent. */
 const WRITE = {
@@ -351,6 +357,17 @@ export function createServer(cli: Cli): Server {
           WRITE,
         ),
         call: async (raw) => toCallToolResult(await stageCrate(raw, writeCtx)),
+      },
+      {
+        descriptor: describeTool(
+          "stage_add_to_crate",
+          "Stage tracks to add to an existing crate",
+          stageAddToCrateDescription,
+          stageAddToCrateInput,
+          stageAddToCrateOutput,
+          WRITE,
+        ),
+        call: async (raw) => toCallToolResult(await stageAddToCrate(raw, writeCtx)),
       },
       {
         descriptor: describeTool(

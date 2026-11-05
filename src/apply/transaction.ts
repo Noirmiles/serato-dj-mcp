@@ -27,10 +27,26 @@ export type AppliedCrate = {
   staged_id: string;
   name: string;
   container_id: number;
+  /** Tracks the crate holds after the write. For a new crate that is every
+   *  staged track; for an append it is the crate's whole size, not the number
+   *  added. */
   track_count: number;
+  /** Present only for an append (see StagedCrate.mode). */
+  mode?: "append";
+  /** Append only: tracks actually inserted. */
+  added?: number;
+  /** Append only: staged tracks the crate already held, left out. */
+  skipped_duplicates?: number;
 };
 
-export type ApplyOutcome = { applied: AppliedCrate[]; revision: number; warnings: Warning[] };
+export type ApplyOutcome = {
+  applied: AppliedCrate[];
+  revision: number;
+  warnings: Warning[];
+  /** false when the batch turned out to change nothing (appends of tracks the
+   *  crates already hold): the transaction was rolled back, not committed. */
+  wrote?: false;
+};
 
 export type ApplyInput = {
   rootPath: string;
@@ -45,6 +61,7 @@ export type ApplyInput = {
 export function applyCrates(input: ApplyInput): ApplyOutcome | SeratoError {
   const written = writeInTransaction(input);
   if (isSeratoError(written)) return written;
+  if (written.wrote === false) return written;
   return verifyCommitted(input, written) ?? written;
 }
 
@@ -166,10 +183,32 @@ function writeInTransaction(input: ApplyInput): ApplyOutcome | SeratoError {
     // Re-validation: name conflicts first, because a conflict makes the whole
     // batch meaningless regardless of tracks.
     const resolvedByCrate = new Map<string, Map<string, number>>();
+    const targetByCrate = new Map<string, number>();
+    // The name matches case-insensitively, but verification reads the name
+    // back byte for byte, so an append reports the spelling Serato stored.
+    const storedNameByCrate = new Map<string, string>();
     const unresolvable: number[] = [];
     for (const crate of input.crates) {
       const conflict = existingCrateId(db, anchors.rootContainerId, crate.name);
-      if (conflict !== null) {
+      if (crate.mode === "append") {
+        // The mirror image of the name check below: an append needs its
+        // crate to exist, as a top-level crate of the Serato Library.
+        if (conflict === null) {
+          rollback();
+          return err("write_refused", `no crate named "${crate.name}" exists to add tracks to`, {
+            reason: "crate_not_found",
+            rejected_track_ids: [],
+            crate_name: crate.name,
+            staged_id: crate.staged_id,
+          });
+        }
+        targetByCrate.set(crate.staged_id, conflict);
+        storedNameByCrate.set(
+          crate.staged_id,
+          (db.prepare("SELECT name FROM container WHERE id = ?").get(conflict) as { name: string })
+            .name,
+        );
+      } else if (conflict !== null) {
         rollback();
         return err("crate_name_conflict", `a crate named "${crate.name}" already exists`, {
           existing_container_id: conflict,
@@ -204,6 +243,81 @@ function writeInTransaction(input: ApplyInput): ApplyOutcome | SeratoError {
       db.prepare("PRAGMA foreign_key_check(container_asset)").all().length;
     const fkBefore = foreignKeyViolations();
 
+    // What each append will insert, worked out before the revision is bumped
+    // so that a batch which changes nothing can be left untouched. container_asset
+    // has no unique constraint on (container_id, space_asset_id), so the
+    // database would happily store a track twice: the de-duplication of an
+    // append lives here, in code.
+    type AppendPlan = {
+      target: number;
+      name: string;
+      toAdd: number[];
+      before: number;
+      lastOrder: number;
+    };
+    const appendPlans = new Map<string, AppendPlan>();
+    for (const crate of input.crates) {
+      const target = targetByCrate.get(crate.staged_id);
+      if (target === undefined) continue;
+      const resolvedTracks = resolvedByCrate.get(crate.staged_id) ?? new Map<string, number>();
+      const held = new Set(
+        (
+          db
+            .prepare("SELECT space_asset_id FROM container_asset WHERE container_id = ?")
+            .all(target) as { space_asset_id: number }[]
+        ).map((r) => r.space_asset_id),
+      );
+      const toAdd: number[] = [];
+      for (const track of crate.tracks) {
+        const spaceAssetId = resolvedTracks.get(track.portable_id);
+        if (spaceAssetId === undefined) {
+          throw new Error(`staged track ${track.portable_id} lost its resolution mid-transaction`);
+        }
+        if (held.has(spaceAssetId)) continue;
+        held.add(spaceAssetId);
+        toAdd.push(spaceAssetId);
+      }
+      // A row count, not held.size: a crate that already carries a
+      // duplicate row (nothing prevents one) must still verify.
+      const stats = db
+        .prepare(
+          "SELECT count(*) AS n, COALESCE(MAX(list_order), 0) AS m FROM container_asset WHERE container_id = ?",
+        )
+        .get(target) as { n: number; m: number };
+      appendPlans.set(crate.staged_id, {
+        target,
+        name: storedNameByCrate.get(crate.staged_id) ?? crate.name,
+        toAdd,
+        before: stats.n,
+        lastOrder: stats.m,
+      });
+    }
+    const changesNothing =
+      input.crates.every((c) => appendPlans.has(c.staged_id)) &&
+      [...appendPlans.values()].every((p) => p.toAdd.length === 0);
+    if (changesNothing) {
+      rollback();
+      const revisionNow = (db.prepare("SELECT revision FROM serato").get() as { revision: number })
+        .revision;
+      return {
+        applied: input.crates.map((c) => {
+          const plan = appendPlans.get(c.staged_id) as AppendPlan;
+          return {
+            staged_id: c.staged_id,
+            name: plan.name,
+            container_id: plan.target,
+            track_count: plan.before,
+            mode: "append" as const,
+            added: 0,
+            skipped_duplicates: c.tracks.length,
+          };
+        }),
+        revision: revisionNow,
+        warnings,
+        wrote: false,
+      };
+    }
+
     // (A) revision first. The space-revision triggers ASSIGN
     // space.revision := serato.revision under space.revision < serato.revision,
     // so bumping after the inserts would leave the space revision unmoved and
@@ -223,6 +337,22 @@ function writeInTransaction(input: ApplyInput): ApplyOutcome | SeratoError {
 
     const applied: AppliedCrate[] = [];
     for (const crate of input.crates) {
+      const plan = appendPlans.get(crate.staged_id);
+      if (plan !== undefined) {
+        plan.toAdd.forEach((spaceAssetId, index) => {
+          insertTrack.run(revision, plan.target, spaceAssetId, plan.lastOrder + index + 1);
+        });
+        applied.push({
+          staged_id: crate.staged_id,
+          name: plan.name,
+          container_id: plan.target,
+          track_count: plan.before + plan.toAdd.length,
+          mode: "append",
+          added: plan.toAdd.length,
+          skipped_duplicates: crate.tracks.length - plan.toAdd.length,
+        });
+        continue;
+      }
       let containerId: number;
       try {
         // (B) no explicit id: AUTOINCREMENT keeps sqlite_sequence right, and an

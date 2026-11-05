@@ -431,3 +431,88 @@ describe("verifyCommitted", () => {
     if (isSeratoError(r)) expect(r.error.code).toBe("write_failed_committed_unverified");
   });
 });
+
+describe("applyCrates: append to an existing crate", () => {
+  const append = (stagedId: string, name: string, portableIds: string[]): StagedCrate => ({
+    ...crate(stagedId, name, portableIds),
+    mode: "append",
+  });
+  const existing = [{ id: 10, name: "Warm Up", trackExternalIds: [1] }];
+
+  it("bumps serato.revision first so the space follows, then appends after the last order", () => {
+    const { input, read } = setup({ crates: existing });
+    const r = applyCrates(input([append("a1", "warm up", ["Users/x/2.flac", "Users/x/3.flac"])]));
+    if (isSeratoError(r)) throw new Error(r.error.message);
+    expect(r.revision).toBe(ROOT_BASE_REVISION + 1);
+    expect(revisions(read)).toEqual({ sr: ROOT_BASE_REVISION + 1, spr: ROOT_BASE_REVISION + 1 });
+    expect(r.applied[0]).toMatchObject({
+      name: "Warm Up",
+      mode: "append",
+      added: 2,
+      skipped_duplicates: 0,
+      track_count: 3,
+    });
+    const rows = read<{ portable_id: string; list_order: number }>(
+      `SELECT a.portable_id, ca.list_order FROM container_asset ca
+         JOIN space_asset sa ON sa.id = ca.space_asset_id JOIN asset a ON a.id = sa.asset_id
+        WHERE ca.container_id = ? ORDER BY ca.list_order`,
+      r.applied[0].container_id,
+    );
+    expect(rows.map((x) => x.portable_id)).toEqual([
+      "Users/x/1.flac",
+      "Users/x/2.flac",
+      "Users/x/3.flac",
+    ]);
+    expect(rows.map((x) => x.list_order)).toEqual([1, 2, 3]);
+    // No new container, and the verification pass reads the same back.
+    expect(read("SELECT 1 FROM container WHERE name = 'Warm Up' COLLATE NOCASE")).toHaveLength(1);
+    expect(verifyCommitted(input([]), r)).toBeNull();
+  });
+
+  it("de-duplicates in code: container_asset would accept the repeat", () => {
+    const { input, read } = setup({ crates: existing });
+    const r = applyCrates(input([append("a1", "Warm Up", ["Users/x/1.flac", "Users/x/2.flac"])]));
+    if (isSeratoError(r)) throw new Error(r.error.message);
+    expect(r.applied[0]).toMatchObject({ added: 1, skipped_duplicates: 1, track_count: 2 });
+    const n = read<{ n: number }>(
+      "SELECT count(*) AS n FROM container_asset WHERE container_id = ?",
+      r.applied[0].container_id,
+    )[0].n;
+    expect(n).toBe(2);
+  });
+
+  it("refuses a crate that does not exist, writing nothing", () => {
+    const { input, read } = setup({ crates: existing });
+    const before = revisions(read);
+    const r = applyCrates(input([append("a1", "Missing", ["Users/x/2.flac"])]));
+    expect(isSeratoError(r) && r.error.code).toBe("write_refused");
+    if (isSeratoError(r)) expect(r.error.details?.reason).toBe("crate_not_found");
+    expect(revisions(read)).toEqual(before);
+  });
+
+  it("refuses an append whose track left the library, writing nothing", () => {
+    const { input, read } = setup({ crates: existing });
+    const before = revisions(read);
+    const r = applyCrates(input([append("a1", "Warm Up", ["Users/x/gone.flac"])]));
+    if (!isSeratoError(r)) throw new Error("expected a refusal");
+    expect(r.error.details?.reason).toBe("tracks_no_longer_resolve");
+    expect(revisions(read)).toEqual(before);
+  });
+
+  it("refuses while Serato is running", () => {
+    const { input, read, masterPath } = setup({ crates: existing });
+    const before = revisions(read);
+    const m = new DatabaseSync(masterPath);
+    m.prepare(
+      "INSERT INTO lock (lock_policy, owner_process_id, owner_process_name) VALUES (1, 500, 'Serato DJ Lite')",
+    ).run();
+    m.close();
+    const r = applyCrates(
+      input([append("a1", "Warm Up", ["Users/x/2.flac"])], {
+        probe: { isAlive: (pid) => pid === 500, nameOf: () => "Serato DJ Lite" },
+      }),
+    );
+    expect(isSeratoError(r) && r.error.code).toBe("serato_running");
+    expect(revisions(read)).toEqual(before);
+  });
+});
