@@ -33,6 +33,7 @@ With crate writing switched on:
 
 - "Build a crate called *Friday Opening* from the twenty tracks you just found, and show me the
   list before writing anything." Then, once you have closed Serato: "Apply the staged crate."
+- "Add those five tracks to my existing *Warm Up* crate." Tracks already in it are skipped.
 
 The assistant does the searching; the server answers from your library and, when asked, writes
 only what you approved.
@@ -195,7 +196,8 @@ Two flags widen that, and each registers extra tools only when it is given — a
 exist cannot be called by mistake:
 
 - `--allow-raw-sql` adds `run_sql`: read-only `SELECT` against the snapshot, returning raw rows.
-- `--allow-writes` adds `stage_crate`, `preview_changes`, `apply_changes` and `discard_changes`.
+- `--allow-writes` adds `stage_crate`, `stage_add_to_crate`, `preview_changes`, `apply_changes`
+  and `discard_changes`.
   Writing is split in two: crates are *staged* first, which never touches the library, and are
   *applied* only when you confirm and Serato is closed. Both databases are backed up before every
   write. The details are in [Writing to the library](#writing-to-the-library).
@@ -247,6 +249,11 @@ With `--allow-writes`:
 
 - `stage_crate` — stage a new crate from track ids. Nothing is written yet; the response lists
   every staged track by title and artist, so check it.
+- `stage_add_to_crate` — stage appending tracks (by track id) to an existing top-level crate, named
+  as in `list_crates`. Same flow as `stage_crate`: nothing is written until `apply_changes`. Tracks
+  go at the end of the crate in the order given; tracks the crate already holds are skipped (the
+  response says how many), because the database itself would accept a track twice. Refused if the
+  crate does not exist. One staged change per crate name.
 - `preview_changes` — show what is staged, with `format: "detail"` down to each track.
 - `apply_changes` — write everything staged, all or nothing. Refused while Serato is running.
 - `discard_changes` — drop one staged crate, or all of them.
@@ -266,8 +273,9 @@ time; `apply_changes` refuses while Serato is running. Start Serato afterwards a
 appear within a few seconds.
 
 What a write does: it creates new crates at the top level of the Serato Library, in
-`root.sqlite`, and nothing else. It never changes or deletes an existing crate, never edits a
-track, never touches `master.sqlite`, `database V2` or the `Subcrates` folder — Serato regenerates
+`root.sqlite`, or appends tracks to the end of an existing top-level crate there, and nothing
+else. Appending only inserts rows; it never reorders, removes or edits a crate's existing tracks,
+never deletes a crate, never edits a track, never touches `master.sqlite`, `database V2` or the `Subcrates` folder — Serato regenerates
 those itself.
 
 Before every write both databases are backed up under
@@ -318,7 +326,7 @@ The same, as a standalone policy with the source file behind each statement:
     `%LOCALAPPDATA%\serato-dj-mcp\State`) holds staged crates, a manifest of every write, lock
     files, and backups of your library databases. Only used with `--allow-writes`. Deleting it
     deletes those backups.
-  - With `--allow-writes`, `apply_changes` writes new crates into Serato's `root.sqlite`.
+  - With `--allow-writes`, `apply_changes` writes new crates, and tracks appended to existing crates, into Serato's `root.sqlite`.
 - **What leaves your computer is up to your MCP client.** Tool results — track titles, artists,
   crate names, file paths — go to your assistant, and from there to whichever model provider the
   client uses. Track paths under your home folder are shortened to `~`; `list_libraries`,

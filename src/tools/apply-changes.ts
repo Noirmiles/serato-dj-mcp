@@ -30,6 +30,9 @@ export const applyChangesOutput = z.object({
       name: z.string(),
       container_id: z.number(),
       track_count: z.number(),
+      mode: z.literal("append").optional(),
+      added: z.number().optional(),
+      skipped_duplicates: z.number().optional(),
     }),
   ),
   backup_paths: z.object({ root: z.string(), master: z.string() }).nullable(),
@@ -38,11 +41,13 @@ export const applyChangesOutput = z.object({
 });
 
 export const applyChangesDescription =
-  "Write every staged crate into the Serato library, all or nothing. Serato must be closed: " +
+  "Write every staged crate into the Serato library, all or nothing -- new crates from stage_crate, " +
+  "and tracks appended to existing crates by stage_add_to_crate (tracks the crate already holds " +
+  "are skipped, and for those track_count is the crate's size afterwards). Serato must be closed: " +
   "the call is refused while it runs. Both library databases are backed up first and the paths " +
   "are returned -- there is no undo tool, restoring means copying those files back with Serato " +
   "closed. Serato shows the new crates after it is started again. If any crate's name is taken " +
-  "or any staged track is gone from the library, nothing is written and the stage is kept. " +
+  ", an appended-to crate no longer exists or any staged track is gone from the library, nothing is written and the stage is kept. " +
   "Before calling it with confirm: true, show the user preview_changes and get their explicit " +
   "go-ahead. New crates do not appear in list_crates or the other read tools until Serato has " +
   "been started and has synced.";
@@ -121,6 +126,7 @@ export async function applyChanges(
         staged_id: c.staged_id,
         name: c.name,
         track_count: c.tracks.length,
+        ...(c.mode === "append" ? { mode: "append" as const } : {}),
         container_id: null,
       })),
       backup_paths: backupPaths,

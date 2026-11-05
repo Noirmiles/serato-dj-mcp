@@ -132,7 +132,7 @@ describe("server", () => {
 
   // Registration depends only on the flag, not on what the library holds --
   // the fixture here is the bare makeMasterFixture with no tracks or crates.
-  it("registers the four write tools only with --allow-writes", () => {
+  it("registers the five write tools only with --allow-writes", () => {
     const without = createServer(cli());
     expect(registeredToolNames(without).sort()).toEqual([
       "audit_library",
@@ -158,6 +158,7 @@ describe("server", () => {
       "preview_changes",
       "search_tracks",
       "serato_inspect",
+      "stage_add_to_crate",
       "stage_crate",
     ]);
   });

@@ -31,7 +31,13 @@ function cli(allowWrites: boolean) {
   };
 }
 
-const WRITE_TOOLS = ["apply_changes", "discard_changes", "preview_changes", "stage_crate"];
+const WRITE_TOOLS = [
+  "apply_changes",
+  "discard_changes",
+  "preview_changes",
+  "stage_add_to_crate",
+  "stage_crate",
+];
 
 /**
  * Calls a tool the way a real client does: tools/list first, then the call.
@@ -58,7 +64,7 @@ async function callToolAfterListingOverTheWire(
 }
 
 describe("write tools over the wire", () => {
-  it("registers the four write tools only with --allow-writes", () => {
+  it("registers the five write tools only with --allow-writes", () => {
     expect(
       registeredToolNames(createServer(cli(false).cli)).filter((n) => WRITE_TOOLS.includes(n)),
     ).toEqual([]);
@@ -133,6 +139,19 @@ describe("write tools over the wire", () => {
     expect(row).toEqual([{ name: "Wire Test" }]);
   });
 
+  // Writes disabled (the default): the tool does not exist, so it cannot be
+  // called by mistake.
+  it("stage_add_to_crate is not registered and cannot be called without --allow-writes", async () => {
+    const server = createServer(cli(false).cli);
+    expect(registeredToolNames(server)).not.toContain("stage_add_to_crate");
+    const result = await callToolAfterListingOverTheWire(server, "stage_add_to_crate", {
+      crate: "x",
+      track_ids: [1],
+    });
+    expect(result.isError).toBe(true);
+    expect((result.content as { text: string }[])[0].text).toContain("not found");
+  });
+
   // A refusal must survive the same ordering as a success does: listTools()
   // builds the client's structuredContent validator, and that validator is
   // what destroyed every error response in the outputSchema defect fixed in
@@ -142,6 +161,11 @@ describe("write tools over the wire", () => {
   it.each([
     { tool: "apply_changes", args: { confirm: false }, code: "invalid_argument" },
     { tool: "stage_crate", args: { name: "Gigs", track_ids: [999999] }, code: "unknown_ids" },
+    {
+      tool: "stage_add_to_crate",
+      args: { crate: "Nope", track_ids: [999999] },
+      code: "unknown_ids",
+    },
     { tool: "discard_changes", args: { staged_id: "nope" }, code: "unknown_ids" },
     { tool: "preview_changes", args: { format: "bogus" }, code: "invalid_argument" },
   ])("$tool refuses $args over the wire after listTools()", async ({ tool, args, code }) => {
