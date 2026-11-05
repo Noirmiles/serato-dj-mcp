@@ -64,6 +64,12 @@ import {
   searchTracksOutput,
 } from "./tools/search-tracks.js";
 import {
+  seratoInspect,
+  seratoInspectDescription,
+  seratoInspectInput,
+  seratoInspectOutput,
+} from "./tools/serato-inspect.js";
+import {
   stageCrate,
   stageCrateDescription,
   stageCrateInput,
@@ -259,6 +265,23 @@ export function createServer(cli: Cli): Server {
       call: async (raw) =>
         toCallToolResult(
           await auditLibrary(raw, {
+            library: cli.library,
+            roots: cli.roots,
+            cacheDir: cli.cacheDir,
+          }),
+        ),
+    },
+    {
+      descriptor: describeTool(
+        "serato_inspect",
+        "Inspect the Serato library layout",
+        seratoInspectDescription,
+        seratoInspectInput,
+        seratoInspectOutput,
+      ),
+      call: async (raw) =>
+        toCallToolResult(
+          await seratoInspect(raw, {
             library: cli.library,
             roots: cli.roots,
             cacheDir: cli.cacheDir,

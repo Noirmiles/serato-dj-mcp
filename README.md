@@ -224,6 +224,14 @@ exist cannot be called by mistake:
   `check_filesystem: true` to also look on disk, which is opt-in because a stat against a
   disconnected drive blocks for seconds. A drive that is not mounted is reported as such rather
   than having all its tracks declared missing.
+- `serato_inspect` — how the library is laid out, for diagnosing an install that behaves
+  unexpectedly (Windows especially): which of `master.sqlite`, `root.sqlite` and `location.sqlite`
+  exist, the snapshot's journal mode and schema `user_version`, its table names, row counts of
+  `container`, `container_asset` and `asset`, whether the `lock` table exists and has rows, and
+  up to 5 samples of stored track paths with their drive letter and separator style. Everything
+  about `master.sqlite` comes from the snapshot copy (so the `lock` answer is as of the snapshot);
+  `root.sqlite` and `location.sqlite` are only checked for existence, never opened. Paths are not
+  redacted.
 - `run_sql` — one read-only `SELECT` against a snapshot copy. Registered only
   with `--allow-raw-sql`, because it returns raw rows with no path redaction.
 

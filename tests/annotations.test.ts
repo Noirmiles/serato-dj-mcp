@@ -60,6 +60,12 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Audit the Serato library",
   },
+  serato_inspect: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Inspect the Serato library layout",
+  },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
   preview_changes: {

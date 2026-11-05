@@ -13,6 +13,11 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `serato_inspect`, a read-only tool reporting the library's layout: which of `master.sqlite`,
+  `root.sqlite` and `location.sqlite` exist, journal mode and `user_version` of the snapshot,
+  table names, row counts, the state of the `lock` table and up to 5 stored-path samples with
+  their drive-letter and separator style. Tested on generated fixtures only; not yet run against
+  a Serato installation on Windows.
 - Windows support for the server's own handling of files, paths and processes, verified on
   2026-10-12 on Windows 11 by the test suite (Node.js 22.16.0, 24.21.0 and 25.6.0) and by driving
   the built server over stdio against the demo library:
