@@ -4,7 +4,7 @@ serato-dj-mcp is not affiliated with Serato. This page records what we could fin
 terms and about the law on interoperability, so that the project's limits (PRINCIPLES.md,
 principle 6) rest on something written down.
 
-**This is not legal advice; Myles must confirm before relying on it.**
+**This is not legal advice. Myles reviewed it on 2026-11-04.**
 
 Date accessed for every source below: **2026-11-04**. Nothing here has been reviewed by a lawyer.
 
@@ -17,6 +17,7 @@ Date accessed for every source below: **2026-11-04**. Nothing here has been revi
 | Serato Terms of Sale | https://serato.com/legal/terms-of-sale | Fetched and read. No "last updated" date. |
 | Serato Software Legal Notices | https://serato.com/legal/software-legal-notices | Fetched. Third-party open-source licence notices, not Serato's EULA. Only the first ~39,000 characters were read verbatim; the page is far larger. |
 | Serato EULA (guessed paths) | https://serato.com/legal/eula, https://serato.com/legal/software-eula, https://serato.com/dj/pro/eula, https://serato.com/dj/lite/eula, https://serato.com/eula, https://serato.com/legal/end-user-license-agreement | All HTTP 404. |
+| Serato DJ EULA (installer) | — | Read by Myles on 2026-11-04 from the installer; not fetched by us; text not reproduced here. |
 | Serato support search | https://support.serato.com/hc/en-us/search?query=EULA | HTTP 403; not read. |
 | 17 U.S.C. § 1201 | https://www.law.cornell.edu/uscode/text/17/1201 | Fetched; subsection (f) quoted in section 4. |
 | Directive 2009/24/EC | https://eur-lex.europa.eu/legal-content/EN/TXT/?uri=CELEX:32009L0024 | Returned an empty body. **Article 6 text not obtained.** |
@@ -29,14 +30,15 @@ and `triseratops` (https://github.com/Holzhaus/triseratops).
 
 ## 2. What Serato's published terms say
 
-### The EULA itself: not found
+### The EULA itself: read by Myles
 
-**We could not find the text of Serato's End User Licence Agreement on serato.com.** We looked at
-the pages and URLs listed in section 1. Serato's own pages say the EULA is shown during
-installation (Terms of Sale, clause 7.1, quoted below), so the text is probably only in the
-installer. Someone needs to read it there (Serato DJ Lite / Pro installer) and add the clauses
-here. Until then, **we do not know whether the EULA prohibits reverse engineering, decompiling or
-interoperability analysis, and this page must not be read as saying it does or does not.**
+We could not find the text of Serato's End User Licence Agreement on serato.com (section 1). Serato's
+Terms of Sale say the EULA is shown during installation (clause 7.1, quoted below).
+
+On 2026-11-04 Myles (the project owner) read the Serato DJ EULA as shown in the installer. He
+reported that its only relevant restriction is that the software may not be resold, and that it
+contains no clause prohibiting reverse engineering or interoperability analysis. His conclusion:
+"We're clear." The EULA text is not reproduced here, and we have not fetched it ourselves.
 
 ### Clauses that do exist (quoted verbatim)
 
@@ -108,8 +110,8 @@ Source: https://www.law.cornell.edu/uscode/text/17/1201 (accessed 2026-11-04).
 
 ## 5. What this project may and may not do
 
-Written conservatively. Because the EULA text is unread, the safe line is the one that would hold
-even if the EULA forbids reverse engineering outright.
+Written conservatively. The safe line is the one that would hold even if a licence forbade reverse
+engineering outright. This is project policy, and the EULA reading in section 2 does not change it.
 
 **Within the line (what the project does today):**
 
@@ -140,10 +142,12 @@ even if the EULA forbids reverse engineering outright.
 
 ## 6. Open items
 
-1. Read the EULA in the Serato DJ installer and add the relevant clauses, verbatim, to section 2.
+1. ~~Read the EULA in the Serato DJ installer and add the relevant clauses, verbatim, to section 2.~~
+   **Done 2026-11-04:** Myles read the EULA in the installer and reported on it (section 2).
 2. Obtain and quote Directive 2009/24/EC Article 6 and 8, and NZ Copyright Act 1994 s 80A, from
    their official sites, and read *Sega v. Accolade*; until then sections 3's EU, NZ and case
    descriptions are unverified.
-3. Have Myles, ideally with a lawyer familiar with NZ and US law, confirm section 5.
+3. ~~Have Myles, ideally with a lawyer familiar with NZ and US law, confirm section 5.~~
+   **Done 2026-11-04:** Myles reviewed section 5. No lawyer review is recorded here.
 
-**This is not legal advice; Myles must confirm before relying on it.**
+**This is not legal advice. Myles reviewed it on 2026-11-04.**
