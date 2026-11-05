@@ -14,7 +14,7 @@ const sha = (p: string) => createHash("sha256").update(readFileSync(p)).digest("
 
 async function inspect(dir: string) {
   const r = await seratoInspect({}, ctx(dir));
-  if (isSeratoError(r)) throw new Error(`unexpected error: ${r.message}`);
+  if (isSeratoError(r)) throw new Error(`unexpected error: ${r.error.message}`);
   return r;
 }
 
@@ -55,10 +55,14 @@ describe("serato_inspect", () => {
   });
 
   it("reports an empty lock table, then one with rows", async () => {
+    const empty = tmp();
+    makeMasterFixture(empty, { tracks: [] });
+    expect((await inspect(empty)).lock).toEqual({ table_exists: true, has_rows: false });
+
+    // A separate library: takeSnapshot serves a library's last snapshot for
+    // 2 s, so editing the same one would still read the empty copy.
     const dir = tmp();
     makeMasterFixture(dir, { tracks: [] });
-    expect((await inspect(dir)).lock).toEqual({ table_exists: true, has_rows: false });
-
     const db = new DatabaseSync(join(dir, "master.sqlite"));
     db.prepare(
       "INSERT INTO lock (lock_policy, owner_process_id, owner_process_name) VALUES (1, 4242, 'Serato DJ Pro.exe')",

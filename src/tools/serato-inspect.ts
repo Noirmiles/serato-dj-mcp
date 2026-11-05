@@ -12,7 +12,7 @@ import { type ReadCtx, readSession, schemaWarnings } from "../read/session.js";
 /** The most path samples ever returned, whatever the library holds. */
 export const MAX_PATH_SAMPLES = 5;
 
-export const seratoInspectInput = z.object({});
+export const seratoInspectInput = z.strictObject({});
 
 export const seratoInspectDescription =
   "Report how the Serato library on this machine is laid out, for diagnosing a Windows or " +
