@@ -232,6 +232,14 @@ exist cannot be called by mistake:
   about `master.sqlite` comes from the snapshot copy (so the `lock` answer is as of the snapshot);
   `root.sqlite` and `location.sqlite` are only checked for existence, never opened. Paths are not
   redacted.
+- `get_track_markers` — the cue points, saved loops, track colour and BPM-lock flag Serato stored
+  in a track's own audio file (the `Serato Markers2` tag), for a track id from `search_tracks`.
+  Reads MP3 and AIFF (ID3v2 `GEOB`) and FLAC (`SERATO_MARKERS_V2`); positions are milliseconds,
+  colours `#rrggbb`. A missing file, another format (M4A, Ogg, WAV, ...) or a file without the tag
+  returns empty lists and a warning rather than an error. The file is only read, never written;
+  the older `Serato Markers_` tag, which Serato prefers when both exist, is not read. Tested on
+  synthetic byte fixtures only, written from the published format notes: not yet compared with
+  files written by Serato itself.
 - `run_sql` — one read-only `SELECT` against a snapshot copy. Registered only
   with `--allow-raw-sql`, because it returns raw rows with no path redaction.
 

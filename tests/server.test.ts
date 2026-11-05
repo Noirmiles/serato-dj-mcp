@@ -104,6 +104,7 @@ describe("server", () => {
     expect(registeredToolNames(s).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
@@ -119,6 +120,7 @@ describe("server", () => {
     expect(registeredToolNames(s).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
@@ -135,6 +137,7 @@ describe("server", () => {
     expect(registeredToolNames(without).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
@@ -148,6 +151,7 @@ describe("server", () => {
       "audit_library",
       "discard_changes",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",

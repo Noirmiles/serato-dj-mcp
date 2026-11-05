@@ -54,6 +54,12 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Get the tracks of a crate",
   },
+  get_track_markers: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Get a track's cues, loops and colour",
+  },
   audit_library: {
     readOnly: true,
     destructive: false,

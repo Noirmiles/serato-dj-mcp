@@ -33,6 +33,12 @@ import {
   getCrateTracksOutput,
 } from "./tools/get-crate-tracks.js";
 import {
+  getTrackMarkers,
+  getTrackMarkersDescription,
+  getTrackMarkersInput,
+  getTrackMarkersOutput,
+} from "./tools/get-track-markers.js";
+import {
   getTracks,
   getTracksDescription,
   getTracksInput,
@@ -235,6 +241,23 @@ export function createServer(cli: Cli): Server {
       call: async (raw) =>
         toCallToolResult(
           await getTracks(raw, { library: cli.library, roots: cli.roots, cacheDir: cli.cacheDir }),
+        ),
+    },
+    {
+      descriptor: describeTool(
+        "get_track_markers",
+        "Get a track's cues, loops and colour",
+        getTrackMarkersDescription,
+        getTrackMarkersInput,
+        getTrackMarkersOutput,
+      ),
+      call: async (raw) =>
+        toCallToolResult(
+          await getTrackMarkers(raw, {
+            library: cli.library,
+            roots: cli.roots,
+            cacheDir: cli.cacheDir,
+          }),
         ),
     },
     {
