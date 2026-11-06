@@ -33,6 +33,12 @@ import {
   getCrateTracksOutput,
 } from "./tools/get-crate-tracks.js";
 import {
+  getTrackMarkers,
+  getTrackMarkersDescription,
+  getTrackMarkersInput,
+  getTrackMarkersOutput,
+} from "./tools/get-track-markers.js";
+import {
   getTracks,
   getTracksDescription,
   getTracksInput,
@@ -64,6 +70,18 @@ import {
   searchTracksOutput,
 } from "./tools/search-tracks.js";
 import {
+  seratoInspect,
+  seratoInspectDescription,
+  seratoInspectInput,
+  seratoInspectOutput,
+} from "./tools/serato-inspect.js";
+import {
+  stageAddToCrate,
+  stageAddToCrateDescription,
+  stageAddToCrateInput,
+  stageAddToCrateOutput,
+} from "./tools/stage-add-to-crate.js";
+import {
   stageCrate,
   stageCrateDescription,
   stageCrateInput,
@@ -80,7 +98,7 @@ const RO = {
   openWorldHint: false,
 } as const;
 
-/** stage_crate only adds to the stage file -- never an overwrite or a
+/** stage_crate and stage_add_to_crate only add to the stage file -- never an overwrite or a
  *  delete -- so destructiveHint stays false; a repeat is refused, not
  *  repeated, but it is not advertised as idempotent. */
 const WRITE = {
@@ -233,6 +251,23 @@ export function createServer(cli: Cli): Server {
     },
     {
       descriptor: describeTool(
+        "get_track_markers",
+        "Get a track's cues, loops and colour",
+        getTrackMarkersDescription,
+        getTrackMarkersInput,
+        getTrackMarkersOutput,
+      ),
+      call: async (raw) =>
+        toCallToolResult(
+          await getTrackMarkers(raw, {
+            library: cli.library,
+            roots: cli.roots,
+            cacheDir: cli.cacheDir,
+          }),
+        ),
+    },
+    {
+      descriptor: describeTool(
         "get_crate_tracks",
         "Get the tracks of a crate",
         getCrateTracksDescription,
@@ -259,6 +294,23 @@ export function createServer(cli: Cli): Server {
       call: async (raw) =>
         toCallToolResult(
           await auditLibrary(raw, {
+            library: cli.library,
+            roots: cli.roots,
+            cacheDir: cli.cacheDir,
+          }),
+        ),
+    },
+    {
+      descriptor: describeTool(
+        "serato_inspect",
+        "Inspect the Serato library layout",
+        seratoInspectDescription,
+        seratoInspectInput,
+        seratoInspectOutput,
+      ),
+      call: async (raw) =>
+        toCallToolResult(
+          await seratoInspect(raw, {
             library: cli.library,
             roots: cli.roots,
             cacheDir: cli.cacheDir,
@@ -305,6 +357,17 @@ export function createServer(cli: Cli): Server {
           WRITE,
         ),
         call: async (raw) => toCallToolResult(await stageCrate(raw, writeCtx)),
+      },
+      {
+        descriptor: describeTool(
+          "stage_add_to_crate",
+          "Stage tracks to add to an existing crate",
+          stageAddToCrateDescription,
+          stageAddToCrateInput,
+          stageAddToCrateOutput,
+          WRITE,
+        ),
+        call: async (raw) => toCallToolResult(await stageAddToCrate(raw, writeCtx)),
       },
       {
         descriptor: describeTool(

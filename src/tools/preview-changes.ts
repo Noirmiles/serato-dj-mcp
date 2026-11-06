@@ -18,6 +18,7 @@ export const previewChangesOutput = z.object({
       staged_id: z.string(),
       name: z.string(),
       track_count: z.number(),
+      mode: z.enum(["create", "append"]).optional(),
       tracks: z.array(trackSchema).optional(),
     }),
   ),
@@ -28,13 +29,14 @@ export const previewChangesOutput = z.object({
 });
 
 export const previewChangesDescription =
-  'Show what apply_changes would write: every staged crate, and with format "detail" every ' +
+  'Show what apply_changes would write: every staged crate (mode "append" marks tracks to add to an existing crate), and with format "detail" every ' +
   "track in it by title and artist. Reads only the stage; the library is not touched.";
 
 type Pending = {
   staged_id: string;
   name: string;
   track_count: number;
+  mode?: "create" | "append";
   tracks?: { id: number; title: string; artist: string }[];
 };
 
@@ -61,6 +63,7 @@ export async function previewChanges(
     staged_id: c.staged_id,
     name: c.name,
     track_count: c.tracks.length,
+    ...(c.mode === "append" ? { mode: "append" as const } : {}),
     ...(detail
       ? { tracks: c.tracks.map((t) => ({ id: t.track_id, title: t.title, artist: t.artist })) }
       : {}),

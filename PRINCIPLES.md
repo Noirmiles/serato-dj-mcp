@@ -34,13 +34,13 @@ enforces it and the tests that would fail if it stopped being true.
    before and after staging and fails if a byte changed.
 
 2. **Without `--allow-writes` the server cannot write, because the write tools do not exist.**
-   `stage_crate`, `preview_changes`, `apply_changes` and `discard_changes` are registered only
+   `stage_crate`, `stage_add_to_crate`, `preview_changes`, `apply_changes` and `discard_changes` are registered only
    behind that flag (`src/server.ts`); a tool that existed and refused would still invite the model
    to try it. `tests/server.test.ts` asserts the tool list without the flag, and
    `tests/server-writes.test.ts` asserts it with the flag.
 
 3. **Every write is staged first, and nothing reaches the library until `apply_changes`.**
-   `stage_crate` writes only a stage file in the state directory; `preview_changes` shows what is
+   `stage_crate` and `stage_add_to_crate` write only a stage file in the state directory; `preview_changes` shows what is
    pending, down to each track; `discard_changes` drops it. `apply_changes` refuses without
    `confirm: true`. Proven by `tests/tools/preview-discard.test.ts` and by
    `tests/tools/apply-changes.test.ts` ("refuses without confirm: true, writing nothing").
@@ -68,9 +68,9 @@ enforces it and the tests that would fail if it stopped being true.
    Covered by `tests/apply/backup.test.ts`, `tests/apply/manifest.test.ts` and the read-back tests
    in `tests/apply/transaction.test.ts`.
 
-7. **Of Serato's own files, only `root.sqlite` is ever written, and only new top-level crates.**
+7. **Of Serato's own files, only `root.sqlite` is ever written, and only new top-level crates or tracks appended to existing ones.**
    The server never writes `master.sqlite`, `database V2` or a `Subcrates/*.crate` file — Serato
-   regenerates those itself — and never modifies or deletes an existing crate or track. Nested
+   regenerates those itself — and never modifies or deletes an existing crate or track; an append only inserts new rows at the end of a crate. Nested
    crates are not supported because Serato deletes them. What was measured about this is written
    down in [docs/serato-4x-notes.md](docs/serato-4x-notes.md).
 

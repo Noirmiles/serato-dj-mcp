@@ -67,7 +67,7 @@ Writing is off by default and is what the extension's safety design is about, so
 seeing. It changes only the demo library.
 
 1. In the extension's settings, switch **Allow writing crates** on, then start a new chat. If the
-   four write tools (`stage_crate`, `preview_changes`, `apply_changes`, `discard_changes`) do not
+   five write tools (`stage_crate`, `stage_add_to_crate`, `preview_changes`, `apply_changes`, `discard_changes`) do not
    appear in the tools menu, switch the extension off and on again.
 2. Ask: "Build a crate called *Friday Opening* from the three tracks between 118 and 126 BPM in 8A
    or 9A, and show me the list before writing anything."

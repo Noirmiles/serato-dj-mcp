@@ -104,10 +104,12 @@ describe("server", () => {
     expect(registeredToolNames(s).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
       "search_tracks",
+      "serato_inspect",
     ]);
   });
 
@@ -118,25 +120,29 @@ describe("server", () => {
     expect(registeredToolNames(s).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
       "run_sql",
       "search_tracks",
+      "serato_inspect",
     ]);
   });
 
   // Registration depends only on the flag, not on what the library holds --
   // the fixture here is the bare makeMasterFixture with no tracks or crates.
-  it("registers the four write tools only with --allow-writes", () => {
+  it("registers the five write tools only with --allow-writes", () => {
     const without = createServer(cli());
     expect(registeredToolNames(without).sort()).toEqual([
       "audit_library",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
       "search_tracks",
+      "serato_inspect",
     ]);
 
     const s = createServer(cli({ allowWrites: true }));
@@ -145,11 +151,14 @@ describe("server", () => {
       "audit_library",
       "discard_changes",
       "get_crate_tracks",
+      "get_track_markers",
       "get_tracks",
       "list_crates",
       "list_libraries",
       "preview_changes",
       "search_tracks",
+      "serato_inspect",
+      "stage_add_to_crate",
       "stage_crate",
     ]);
   });

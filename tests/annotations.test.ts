@@ -54,14 +54,32 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Get the tracks of a crate",
   },
+  get_track_markers: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Get a track's cues, loops and colour",
+  },
   audit_library: {
     readOnly: true,
     destructive: false,
     idempotent: true,
     title: "Audit the Serato library",
   },
+  serato_inspect: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Inspect the Serato library layout",
+  },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
+  stage_add_to_crate: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Stage tracks to add to an existing crate",
+  },
   preview_changes: {
     readOnly: true,
     destructive: false,

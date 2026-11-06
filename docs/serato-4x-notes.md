@@ -34,7 +34,10 @@ to a working library, it was backed up byte for byte first and restored afterwar
   user-created crate can share that exact name while having a different `type`.
 - `container` carries a UNIQUE constraint on `(parent_id, name COLLATE NOCASE, type)`, so
   `sErAtO dEmO tRaCkS` collides with `Serato Demo Tracks`.
-- `container_asset` has no unique constraint on `(container_id, space_asset_id)`.
+- `container_asset` has no unique constraint on `(container_id, space_asset_id)`. Appending to an
+  existing crate therefore de-duplicates in code (`src/apply/transaction.ts`), and adds the new rows
+  after the crate's highest `list_order` under the same revision-first ordering as a new crate.
+  Not yet checked against Serato itself: that it picks up rows appended to a crate it already knows.
 - A crate nested inside another crate is deleted by Serato the next time it syncs — written to a
   working library and reproduced twice.
 - An empty crate is deleted by Serato too: on 2026-09-16, on a working library, a start of Serato
