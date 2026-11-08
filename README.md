@@ -278,8 +278,13 @@ talk to Serato only through its process and its main window.
 - `serato_close` asks the main window to close, as the close button does, waits up to
   `timeout_seconds` (default 30, max 120) for the process to exit, then checks that the
   `_Serato_database V2` file has not changed in size or modification time for about 2 seconds. It
-  never force-terminates Serato. If Serato does not exit (typically a dialog is waiting for you)
-  the error says it is still running and was NOT killed. It is refused while Serato is making
+  never force-terminates Serato. Serato DJ Pro 4 answers a close request with an "Exit - are you
+  sure?" dialog and keeps running until someone clicks Yes; since `confirm: true` was given and the
+  audio check has already passed, `serato_close` then presses that dialog's Yes/OK button (UI
+  Automation first, else OCR of the Serato window only, then a click; never the full screen). If
+  the dialog is not found, or Serato does not exit (another dialog is waiting for you), the error
+  says it is still running and was NOT killed. The dialog is never confirmed while audio is
+  detected. It is refused while Serato is making
   sound.
 - Audio detection reads the peak meter of Serato's Windows audio session (core audio,
   `IAudioMeterInformation`) over about half a second. **Limit:** it only sees audio that goes

@@ -39,6 +39,12 @@ export interface SeratoPlatform {
    *  agreed. Never terminates the process. */
   requestClose(pid: number): Promise<boolean>;
   isProcessAlive(pid: number): Promise<boolean>;
+  /** After requestClose, Serato may show an "Exit - are you sure?" dialog and stay
+   *  alive. Looks for it (a top-level window of the process, found through UI
+   *  Automation, else the window-scoped OCR of the main window) and presses its
+   *  Yes / OK button. 'not_found' when no such dialog or button was seen. Never
+   *  terminates the process and never captures outside the Serato window. */
+  confirmExitDialog(pid: number): Promise<ExitDialogResult>;
   /** Starts the executable detached and resolves to its pid. */
   launch(exePath: string): Promise<{ pid: number }>;
   /** SERATO_DJ_EXE, else registry / App Paths / Program Files; null if none. */
@@ -61,6 +67,8 @@ export interface SeratoPlatform {
    *  must lie inside the window (SetCursorPos + mouse_event). Throws otherwise. */
   clickWindowPoint(pid: number, x: number, y: number): Promise<void>;
 }
+
+export type ExitDialogResult = "clicked" | "not_found";
 
 /** Thrown by a backend when the OS call itself failed (not "not found"). */
 export class PlatformError extends Error {}

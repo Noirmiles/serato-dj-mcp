@@ -70,6 +70,43 @@ describe("serato_close", () => {
     expect(f.calls.filter((c) => /^(requestClose|launch)/.test(c))).toEqual(["requestClose:4242"]);
   });
 
+  it("confirms Serato's exit dialog after the close request, then succeeds", async () => {
+    const f = FakePlatform.running({ exitDialog: "shown" });
+    const r = await run(f, { confirm: true });
+    expect(r).toMatchObject({ was_running: true, exited: true, database_file_stable: true });
+    expect(f.calls).toContain("confirmExitDialog:4242");
+    const order = f.calls.filter((c) =>
+      /^(detectAudioPlaying|requestClose|confirmExitDialog)/.test(c),
+    );
+    expect(order[0]).toMatch(/^detectAudioPlaying/);
+    expect(order[1]).toMatch(/^requestClose/);
+    expect(order[2]).toMatch(/^confirmExitDialog/);
+  });
+
+  it("reports still_running, not killed, when the exit dialog cannot be found", async () => {
+    const f = FakePlatform.running({ exitDialog: "shown", dialogFindable: false });
+    const r = await run(f, { confirm: true, timeout_seconds: 10 });
+    expect(code(r)).toBe("still_running");
+    if (!isSeratoError(r)) throw new Error("unexpected");
+    expect(r.error.message).toMatch(/NOT killed/);
+    expect(r.error.details).toMatchObject({ killed: false });
+    expect(f.calls.filter((c) => c.startsWith("confirmExitDialog")).length).toBeGreaterThan(0);
+  });
+
+  it("never touches the exit dialog when audio is playing", async () => {
+    const f = FakePlatform.running({ audio: true, exitDialog: "shown" });
+    const r = await run(f, { confirm: true });
+    expect(code(r)).toBe("audio_playing");
+    expect(f.calls.some((c) => c.startsWith("confirmExitDialog"))).toBe(false);
+    expect(f.calls.some((c) => c.startsWith("requestClose"))).toBe(false);
+  });
+
+  it("does not look for a dialog when Serato exits on its own", async () => {
+    const f = FakePlatform.running();
+    await run(f, { confirm: true });
+    expect(f.calls.some((c) => c.startsWith("confirmExitDialog"))).toBe(false);
+  });
+
   it("rejects timeouts beyond 120 seconds", async () => {
     const r = await run(FakePlatform.running(), { confirm: true, timeout_seconds: 121 });
     expect(code(r)).toBe("invalid_argument");

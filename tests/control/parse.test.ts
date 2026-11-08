@@ -152,3 +152,57 @@ describe("window-driving output parsing", () => {
     expect(() => WINDOW_SCRIPTS.ocr(-1)).toThrow();
   });
 });
+
+describe("confirmExitDialog (Windows backend, scripts stubbed)", () => {
+  it("uses the UIA result when it pressed the button, without any OCR", async () => {
+    const seen: string[] = [];
+    const p = new WindowsSeratoPlatform({
+      env: {},
+      run: async (s) => {
+        seen.push(s);
+        return '{"clicked":true,"name":"Yes"}';
+      },
+    });
+    expect(await p.confirmExitDialog(5)).toBe("clicked");
+    expect(seen.length).toBe(1);
+    expect(seen[0]).toContain("InvokePattern");
+  });
+
+  it("falls back to window-scoped OCR and clicks the Yes word", async () => {
+    const seen: string[] = [];
+    const word = (t: string, x: number, y: number) => ({ text: t, x, y, w: 20, h: 10 });
+    const p = new WindowsSeratoPlatform({
+      env: {},
+      run: async (s) => {
+        seen.push(s);
+        if (s.includes("CopyFromScreen")) {
+          return JSON.stringify({
+            left: 0,
+            top: 0,
+            width: 1920,
+            height: 1080,
+            lines: [
+              { text: "Exit - are you sure?", words: [word("Exit", 400, 300)] },
+              { text: "Yes No", words: [word("Yes", 410, 360), word("No", 460, 360)] },
+            ],
+          });
+        }
+        if (s.includes("$cx")) return '{"ok":true}';
+        return '{"clicked":false}';
+      },
+    });
+    expect(await p.confirmExitDialog(5)).toBe("clicked");
+    expect(seen.some((s) => s.includes("$cx = 420; $cy = 365"))).toBe(true);
+  });
+
+  it("is not_found when nothing matches or OCR fails", async () => {
+    const p = new WindowsSeratoPlatform({
+      env: {},
+      run: async (s) =>
+        s.includes("CopyFromScreen")
+          ? '{"error":"could not bring the Serato window to the front"}'
+          : '{"clicked":false}',
+    });
+    expect(await p.confirmExitDialog(5)).toBe("not_found");
+  });
+});

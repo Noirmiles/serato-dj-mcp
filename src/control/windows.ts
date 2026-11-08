@@ -1,10 +1,12 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { dirname, win32 } from "node:path";
+import { findConfirmButton, hasExitDialogText } from "./dialog-match.js";
 import {
   parseAudio,
   parseBool,
   parseClick,
+  parseConfirmClicked,
   parseInstallPath,
   parseOcr,
   parseProcess,
@@ -14,6 +16,7 @@ import {
 } from "./parse.js";
 import {
   type AudioState,
+  type ExitDialogResult,
   type FileStat,
   type OcrWindow,
   PlatformError,
@@ -322,6 +325,30 @@ export class WindowsSeratoPlatform implements SeratoPlatform {
 
   async uiaRescan(pid: number): Promise<UiaRescanOutcome> {
     return parseUiaRescan(await this.run(WINDOW_SCRIPTS.uiaRescan(pid)));
+  }
+
+  async confirmExitDialog(pid: number): Promise<ExitDialogResult> {
+    try {
+      if (parseConfirmClicked(await this.run(WINDOW_SCRIPTS.uiaConfirmExit(pid)))) return "clicked";
+    } catch {
+      // UI Automation unavailable: fall through to the OCR attempt.
+    }
+    try {
+      // Same window-scoped OCR as serato_rescan: only the Serato window rectangle,
+      // and only after it is confirmed in front (otherwise this throws).
+      const shot = await this.ocrWindow(pid);
+      if (!hasExitDialogText(shot.lines)) return "not_found";
+      const b = findConfirmButton(shot.lines);
+      if (!b) return "not_found";
+      await this.clickWindowPoint(
+        pid,
+        Math.round(b.x + b.width / 2),
+        Math.round(b.y + b.height / 2),
+      );
+      return "clicked";
+    } catch {
+      return "not_found";
+    }
   }
 
   async uiaWindowText(pid: number): Promise<string[] | null> {
