@@ -26,6 +26,7 @@ async function connect(libraryDir: string, allowWrites = false) {
     stateDir: state,
     allowWrites,
     allowRawSql: false,
+    allowSeratoControl: false,
   });
   const [st, ct] = InMemoryTransport.createLinkedPair();
   const client = new Client({ name: "test", version: "0.0.0" });

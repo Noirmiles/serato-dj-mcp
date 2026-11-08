@@ -13,6 +13,14 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `--allow-serato-control` (Windows only): registers `serato_status`, `serato_close` and
+  `serato_open`. Status reports the process, main window, audio state and install path;
+  `looks_idle` is a polled hint. Close is graceful only (`confirm: true`, refused while audio is
+  detected, never force-terminates, reports "still running, NOT killed" on timeout, then checks
+  `database V2` is stable). Open launches from `SERATO_DJ_EXE` or a discovered install and waits for
+  the window. Backed by Windows PowerShell 5.1 behind a `SeratoPlatform` interface; writes no
+  library file. Scripts checked on real PowerShell with Serato not running only; tool logic is
+  tested with a fake platform.
 - `stage_add_to_crate` (with `--allow-writes`): stage appending tracks to an existing top-level
   crate, through the same stage, `preview_changes`, `apply_changes` flow as `stage_crate` — backup
   first, `serato.revision` bumped before the `container_asset` rows, refused while Serato runs.

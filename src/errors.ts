@@ -22,6 +22,12 @@ export const ERROR_CODES = {
   write_failed_committed_unverified: "write_failed_committed_unverified",
   busy: "busy",
   malformed_file: "malformed_file",
+  audio_playing: "audio_playing",
+  still_running: "still_running",
+  install_not_found: "install_not_found",
+  launch_failed: "launch_failed",
+  launch_timeout: "launch_timeout",
+  control_failed: "control_failed",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;
