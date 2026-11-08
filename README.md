@@ -271,7 +271,8 @@ With `--allow-serato-control`, on Windows only:
 ## Controlling Serato (Windows)
 
 `--allow-serato-control` registers four tools, and only when the server runs on Windows; on any
-other system the flag registers nothing. None of them writes a Serato file. They run Windows
+other system the flag registers nothing. None of them writes a Serato file. A plain-language guide
+to these tools and their safety rules is in [docs/serato-control.md](docs/serato-control.md). They run Windows
 PowerShell 5.1 (`powershell.exe`, part of Windows, nothing to install) with built-in .NET, and
 talk to Serato only through its process and its main window.
 
