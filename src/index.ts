@@ -15,11 +15,13 @@ Usage: serato-dj-mcp [options]
   --state-dir <dir>    Where backups and manifests go (NOT safe to delete)
   --allow-raw-sql      Register run_sql
   --allow-writes       Register stage_crate, stage_add_to_crate, preview_changes, apply_changes, discard_changes
+  --allow-serato-control  Windows only: register serato_status, serato_close, serato_open
   -h, --help           Show this help
   -V, --version        Show the version
 
 Environment:
   SERATO_LIBRARY_PATH  Same as --library; --library wins.
+  SERATO_DJ_EXE        Full path of 'Serato DJ Pro.exe' for serato_open (else found automatically).
 `;
 
 const parsed = parseArgs(process.argv.slice(2), process.env);
@@ -41,6 +43,7 @@ if ("version" in parsed) {
 const flags: string[] = [];
 if (parsed.allowWrites) flags.push("writes enabled");
 if (parsed.allowRawSql) flags.push("raw sql enabled");
+if (parsed.allowSeratoControl) flags.push("serato control enabled");
 process.stderr.write(
   `serato-dj-mcp ${VERSION} on stdio (${flags.length > 0 ? flags.join(", ") : "read-only"})\n`,
 );

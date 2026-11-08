@@ -112,6 +112,8 @@ Add options after `serato-dj-mcp` in `args`, for example
   as forward slashes.
 - `--allow-writes` — crate writing, see below.
 - `--allow-raw-sql` — adds `run_sql`, read-only SQL for developers.
+- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close` and `serato_open`,
+  see [Controlling Serato (Windows)](#controlling-serato-windows).
 
 All options are listed under [Options](#options).
 
@@ -258,12 +260,49 @@ With `--allow-writes`:
 - `apply_changes` — write everything staged, all or nothing. Refused while Serato is running.
 - `discard_changes` — drop one staged crate, or all of them.
 
+With `--allow-serato-control`, on Windows only:
+
+- `serato_status` — is Serato DJ Pro running: process name, path and pid, main-window title and
+  whether it responds, audio state, discovered install path, and `looks_idle`.
+- `serato_close` — gracefully close Serato (needs `confirm: true`), see below.
+- `serato_open` — start Serato and wait until its window is ready.
+
+## Controlling Serato (Windows)
+
+`--allow-serato-control` registers three tools, and only when the server runs on Windows; on any
+other system the flag registers nothing. None of them writes a Serato file. They run Windows
+PowerShell 5.1 (`powershell.exe`, part of Windows, nothing to install) with built-in .NET, and
+talk to Serato only through its process and its main window.
+
+- `serato_close` asks the main window to close, as the close button does, waits up to
+  `timeout_seconds` (default 30, max 120) for the process to exit, then checks that the
+  `_Serato_database V2` file has not changed in size or modification time for about 2 seconds. It
+  never force-terminates Serato. If Serato does not exit (typically a dialog is waiting for you)
+  the error says it is still running and was NOT killed. It is refused while Serato is making
+  sound.
+- Audio detection reads the peak meter of Serato's Windows audio session (core audio,
+  `IAudioMeterInformation`) over about half a second. **Limit:** it only sees audio that goes
+  through the Windows mixer. Serato on an ASIO driver, the usual setup with a DJ controller, has no
+  such session, and the answer is `"unknown"`; the close then proceeds on your confirmation alone
+  and says so in a warning. A paused or silent deck reads as not playing.
+- `looks_idle` in `serato_status` is a hint, not a guarantee: Serato running, window responding,
+  `database V2` unchanged over a 2 second poll. Serato 4 may keep its state in `master.sqlite`
+  instead, in which case that file's silence proves little.
+- `serato_open` finds `Serato DJ Pro.exe` from the `SERATO_DJ_EXE` environment variable if set,
+  otherwise the registry (uninstall and App Paths keys) and the Program Files folders, starts it
+  and waits until the window responds and has a title. If it is not found, set `SERATO_DJ_EXE`.
+
+Status: the PowerShell scripts were run against a real Windows PowerShell 5.1 for process, window and
+install discovery with Serato not running, and the audio enumeration was run to the point of finding
+no session; closing and opening a real Serato, and a positive audio reading, have **not** been
+verified. The tool logic is tested against a fake platform.
+
 ## Options
 
 `--library <path>`, `--root <dir>` (repeatable), `--cache-dir <dir>`,
-`--state-dir <dir>`, `--allow-raw-sql`, `--allow-writes`, `--help`,
+`--state-dir <dir>`, `--allow-raw-sql`, `--allow-writes`, `--allow-serato-control`, `--help`,
 `--version`. `SERATO_LIBRARY_PATH` is an alternative to `--library`;
-the flag wins. An unknown option is an error, not a no-op.
+the flag wins. `SERATO_DJ_EXE` is the full path of `Serato DJ Pro.exe` for `serato_open`. An unknown option is an error, not a no-op.
 
 ## Writing to the library
 

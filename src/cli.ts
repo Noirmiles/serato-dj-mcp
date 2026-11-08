@@ -10,6 +10,8 @@ export type Cli = {
   stateDir: string;
   allowWrites: boolean;
   allowRawSql: boolean;
+  /** Windows only: registers serato_status, serato_close and serato_open. */
+  allowSeratoControl: boolean;
 };
 
 /**
@@ -52,6 +54,7 @@ export function parseArgs(
     stateDir: windows ? windowsDataDir(env, "State") : defaultStateDir(),
     allowWrites: false,
     allowRawSql: false,
+    allowSeratoControl: false,
   };
   if (env.SERATO_LIBRARY_PATH) cli.library = env.SERATO_LIBRARY_PATH;
 
@@ -76,6 +79,9 @@ export function parseArgs(
         break;
       case "--allow-raw-sql":
         cli.allowRawSql = true;
+        break;
+      case "--allow-serato-control":
+        cli.allowSeratoControl = true;
         break;
       case "--library":
       case "--root":

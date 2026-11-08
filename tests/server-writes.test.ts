@@ -27,6 +27,7 @@ function cli(allowWrites: boolean) {
       stateDir: tmp(),
       allowWrites,
       allowRawSql: false,
+      allowSeratoControl: false,
     },
   };
 }
