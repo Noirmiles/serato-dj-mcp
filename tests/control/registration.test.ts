@@ -6,7 +6,7 @@ import type { Cli } from "../../src/cli.js";
 import { createServer, registeredToolNames } from "../../src/server.js";
 import { FakePlatform } from "./fake.js";
 
-const CONTROL = ["serato_close", "serato_open", "serato_status"];
+const CONTROL = ["serato_close", "serato_open", "serato_rescan", "serato_status"];
 const cli = (over: Partial<Cli> = {}): Cli => ({
   roots: [],
   cacheDir: mkdtempSync(join(tmpdir(), "serato-c-")),
@@ -21,7 +21,7 @@ const all = (c: Cli, host: NodeJS.Platform) =>
 const names = (c: Cli, host: NodeJS.Platform) => all(c, host).filter((n) => CONTROL.includes(n));
 
 describe("serato control registration", () => {
-  it("registers the three tools only with the flag on Windows", () => {
+  it("registers the four tools only with the flag on Windows", () => {
     expect(names(cli({ allowSeratoControl: true }), "win32").sort()).toEqual(CONTROL);
   });
   it("does not register without the flag", () => {

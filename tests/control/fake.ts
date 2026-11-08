@@ -1,8 +1,10 @@
 import type {
   AudioState,
   FileStat,
+  OcrWindow,
   ProcessInfo,
   SeratoPlatform,
+  UiaRescanOutcome,
   WindowInfo,
 } from "../../src/control/platform.js";
 
@@ -26,6 +28,17 @@ export class FakePlatform implements SeratoPlatform {
   exitsOnClose = true;
   closeDelivered = true;
   launchFails = false;
+  /** serato_rescan scripting. */
+  uia: UiaRescanOutcome | Error = { found: false, elementCount: 0 };
+  /** What UIA can read of the window, per poll; the last entry repeats. */
+  uiaText: Array<string[] | null> = [[]];
+  /** OCR results, one per ocrWindow call; the last entry repeats. An Error is thrown. */
+  ocrs: Array<OcrWindow | Error> = [];
+  clicks: Array<{ x: number; y: number }> = [];
+  /** Run when a click lands (a test makes the "window" react). */
+  onClick: (fake: FakePlatform, x: number, y: number) => void = () => {};
+  private uiaTextCalls = 0;
+  private ocrCalls = 0;
   onTick: (fake: FakePlatform) => void = () => {};
   private closeRequested = false;
 
@@ -77,6 +90,28 @@ export class FakePlatform implements SeratoPlatform {
   async detectAudioPlaying(pid: number) {
     this.calls.push(`detectAudioPlaying:${pid}`);
     return this.audio;
+  }
+  async uiaRescan(pid: number) {
+    this.calls.push(`uiaRescan:${pid}`);
+    if (this.uia instanceof Error) throw this.uia;
+    return this.uia;
+  }
+  async uiaWindowText(pid: number) {
+    this.calls.push(`uiaWindowText:${pid}`);
+    const i = Math.min(this.uiaTextCalls++, this.uiaText.length - 1);
+    return this.uiaText[i] ?? null;
+  }
+  async ocrWindow(pid: number): Promise<OcrWindow> {
+    this.calls.push(`ocrWindow:${pid}`);
+    const o = this.ocrs[Math.min(this.ocrCalls++, this.ocrs.length - 1)];
+    if (!o) throw new Error("no OCR scripted");
+    if (o instanceof Error) throw o;
+    return o;
+  }
+  async clickWindowPoint(pid: number, x: number, y: number) {
+    this.calls.push(`click:${pid}:${x},${y}`);
+    this.clicks.push({ x, y });
+    this.onClick(this, x, y);
   }
   async statDatabaseFile() {
     this.calls.push("statDatabaseFile");

@@ -1,15 +1,28 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync, statSync } from "node:fs";
 import { dirname, win32 } from "node:path";
-import { parseAudio, parseBool, parseInstallPath, parseProcess, parseWindow } from "./parse.js";
+import {
+  parseAudio,
+  parseBool,
+  parseClick,
+  parseInstallPath,
+  parseOcr,
+  parseProcess,
+  parseUiaRescan,
+  parseUiaText,
+  parseWindow,
+} from "./parse.js";
 import {
   type AudioState,
   type FileStat,
+  type OcrWindow,
   PlatformError,
   type ProcessInfo,
   type SeratoPlatform,
+  type UiaRescanOutcome,
   type WindowInfo,
 } from "./platform.js";
+import { WINDOW_SCRIPTS } from "./window-scripts.js";
 
 /**
  * The Windows backend: the only code in this server that looks at processes
@@ -305,6 +318,26 @@ export class WindowsSeratoPlatform implements SeratoPlatform {
     } catch {
       return "unknown";
     }
+  }
+
+  async uiaRescan(pid: number): Promise<UiaRescanOutcome> {
+    return parseUiaRescan(await this.run(WINDOW_SCRIPTS.uiaRescan(pid)));
+  }
+
+  async uiaWindowText(pid: number): Promise<string[] | null> {
+    try {
+      return parseUiaText(await this.run(WINDOW_SCRIPTS.uiaText(pid)));
+    } catch {
+      return null;
+    }
+  }
+
+  async ocrWindow(pid: number): Promise<OcrWindow> {
+    return parseOcr(await this.run(WINDOW_SCRIPTS.ocr(pid)));
+  }
+
+  async clickWindowPoint(pid: number, x: number, y: number): Promise<void> {
+    parseClick(await this.run(WINDOW_SCRIPTS.click(pid, x, y)));
   }
 
   async statDatabaseFile(): Promise<FileStat | null> {

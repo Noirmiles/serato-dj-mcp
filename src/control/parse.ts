@@ -1,5 +1,12 @@
 import { z } from "zod";
-import type { AudioState, ProcessInfo, WindowInfo } from "./platform.js";
+import {
+  type AudioState,
+  type OcrWindow,
+  PlatformError,
+  type ProcessInfo,
+  type UiaRescanOutcome,
+  type WindowInfo,
+} from "./platform.js";
 
 /**
  * Parsing of what the PowerShell scripts print. PowerShell 5.1's
@@ -74,4 +81,88 @@ export function parseAudio(stdout: string): AudioState {
   if (a.data.audio === "playing") return true;
   if (a.data.audio === "silent") return false;
   return "unknown";
+}
+
+const uiaSchema = z.object({
+  found: z.boolean(),
+  count: z.number().int().nonnegative().optional(),
+  name: z.string().optional(),
+  id: z.string().optional(),
+  action: z.enum(["invoke", "click"]).optional(),
+});
+
+export function parseUiaRescan(stdout: string): UiaRescanOutcome {
+  const p = uiaSchema.safeParse(lastJson(stdout));
+  if (!p.success) throw new PlatformError("unreadable UI Automation result");
+  const elementCount = p.data.count ?? 0;
+  if (!p.data.found || !p.data.action) return { found: false, elementCount };
+  return {
+    found: true,
+    elementCount,
+    name: p.data.name ?? "",
+    automationId: p.data.id ?? "",
+    action: p.data.action,
+  };
+}
+
+export function parseUiaText(stdout: string): string[] | null {
+  const p = z.object({ names: z.array(z.string()) }).safeParse(lastJson(stdout));
+  return p.success ? p.data.names : null;
+}
+
+const ocrWordSchema = z.object({
+  text: z.string(),
+  x: z.number(),
+  y: z.number(),
+  w: z.number(),
+  h: z.number(),
+});
+const ocrSchema = z.object({
+  error: z.string().optional(),
+  left: z.number().optional(),
+  top: z.number().optional(),
+  width: z.number().optional(),
+  height: z.number().optional(),
+  // PowerShell 5.1 turns a one-element array into a bare object.
+  lines: z
+    .array(
+      z.object({
+        text: z.string(),
+        words: z.union([z.array(ocrWordSchema), ocrWordSchema]),
+      }),
+    )
+    .or(z.object({ text: z.string(), words: z.union([z.array(ocrWordSchema), ocrWordSchema]) }))
+    .optional(),
+});
+
+export function parseOcr(stdout: string): OcrWindow {
+  const p = ocrSchema.safeParse(lastJson(stdout));
+  if (!p.success) throw new PlatformError("unreadable OCR result");
+  if (p.data.error) throw new PlatformError(p.data.error);
+  const rawLines =
+    p.data.lines === undefined ? [] : Array.isArray(p.data.lines) ? p.data.lines : [p.data.lines];
+  return {
+    window: {
+      left: p.data.left ?? 0,
+      top: p.data.top ?? 0,
+      width: p.data.width ?? 0,
+      height: p.data.height ?? 0,
+    },
+    lines: rawLines.map((l) => ({
+      text: l.text,
+      words: (Array.isArray(l.words) ? l.words : [l.words]).map((w) => ({
+        text: w.text,
+        x: w.x,
+        y: w.y,
+        width: w.w,
+        height: w.h,
+      })),
+    })),
+  };
+}
+
+export function parseClick(stdout: string): void {
+  const p = z.object({ ok: z.boolean(), error: z.string().optional() }).safeParse(lastJson(stdout));
+  if (!p.success) throw new PlatformError("unreadable click result");
+  if (!p.data.ok) throw new PlatformError(p.data.error ?? "click was not delivered");
 }

@@ -91,6 +91,12 @@ const EXPECTED: Record<
     idempotent: false,
     title: "Start Serato DJ Pro",
   },
+  serato_rescan: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Re-scan file info in Serato DJ Pro",
+  },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
   stage_add_to_crate: {

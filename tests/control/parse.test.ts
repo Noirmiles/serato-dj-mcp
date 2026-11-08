@@ -2,10 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   parseAudio,
   parseBool,
+  parseClick,
   parseInstallPath,
+  parseOcr,
   parseProcess,
+  parseUiaRescan,
+  parseUiaText,
   parseWindow,
 } from "../../src/control/parse.js";
+import { WINDOW_SCRIPTS } from "../../src/control/window-scripts.js";
 import { encodeScript, SCRIPTS, WindowsSeratoPlatform } from "../../src/control/windows.js";
 
 describe("PowerShell output parsing", () => {
@@ -106,5 +111,44 @@ describe("Windows backend (scripts stubbed)", () => {
       },
     });
     expect(await p.findInstallPath()).toBe(process.execPath);
+  });
+});
+
+describe("window-driving output parsing", () => {
+  it("parses UIA results", () => {
+    expect(parseUiaRescan('{"found":false,"count":1}')).toEqual({ found: false, elementCount: 1 });
+    expect(
+      parseUiaRescan(
+        '{"found":true,"count":9,"name":"Re-Scan File Info","id":"","action":"invoke"}',
+      ),
+    ).toMatchObject({ found: true, action: "invoke", name: "Re-Scan File Info" });
+    expect(() => parseUiaRescan("nothing")).toThrow();
+    expect(parseUiaText('{"names":["a","b"]}')).toEqual(["a", "b"]);
+    expect(parseUiaText("x")).toBeNull();
+  });
+  it("parses OCR output, tolerating one-element arrays, and surfaces errors", () => {
+    const w = '{"text":"Files","x":1,"y":2,"w":3,"h":4}';
+    const one = parseOcr(
+      `{"left":0,"top":0,"width":10,"height":10,"lines":{"text":"Files","words":${w}}}`,
+    );
+    expect(one.lines[0]?.words[0]).toEqual({ text: "Files", x: 1, y: 2, width: 3, height: 4 });
+    expect(parseOcr('{"left":0,"top":0,"width":10,"height":10,"lines":[]}').lines).toEqual([]);
+    expect(() => parseOcr('{"error":"no foreground"}')).toThrow("no foreground");
+  });
+  it("parses click results", () => {
+    expect(() => parseClick('{"ok":true}')).not.toThrow();
+    expect(() => parseClick('{"ok":false,"error":"outside"}')).toThrow("outside");
+  });
+  it("builds window scripts that carry only validated numbers and no process-ending call", () => {
+    for (const s of [
+      WINDOW_SCRIPTS.uiaRescan(12),
+      WINDOW_SCRIPTS.uiaText(12),
+      WINDOW_SCRIPTS.ocr(12),
+      WINDOW_SCRIPTS.click(12, 5, 6),
+    ]) {
+      expect(s).not.toMatch(/Stop-Process|\.Kill\(|taskkill/i);
+    }
+    expect(() => WINDOW_SCRIPTS.click(12, 1.5, 6)).toThrow();
+    expect(() => WINDOW_SCRIPTS.ocr(-1)).toThrow();
   });
 });

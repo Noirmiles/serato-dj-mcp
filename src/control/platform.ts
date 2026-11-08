@@ -47,7 +47,42 @@ export interface SeratoPlatform {
   detectAudioPlaying(pid: number): Promise<AudioState>;
   /** mtime and size of the _Serato_ "database V2" file; null if not found. */
   statDatabaseFile(): Promise<FileStat | null>;
+
+  /** Looks for the Re-Scan File Info button through UI Automation and, if found,
+   *  presses it (InvokePattern, else a click on its bounding rectangle). */
+  uiaRescan(pid: number): Promise<UiaRescanOutcome>;
+  /** Names of the elements UI Automation can see in the main window; null if it could not be read. */
+  uiaWindowText(pid: number): Promise<string[] | null>;
+  /** Brings the main window to the front and reads a screenshot of that window's
+   *  rectangle only (never the full screen) with the built-in Windows OCR.
+   *  Throws PlatformError if the window cannot be brought to the front or OCR is unavailable. */
+  ocrWindow(pid: number): Promise<OcrWindow>;
+  /** Brings the main window to the front and left-clicks the screen point, which
+   *  must lie inside the window (SetCursorPos + mouse_event). Throws otherwise. */
+  clickWindowPoint(pid: number, x: number, y: number): Promise<void>;
 }
 
 /** Thrown by a backend when the OS call itself failed (not "not found"). */
 export class PlatformError extends Error {}
+
+/** One recognised word, in screen pixels. */
+export type OcrWord = { text: string; x: number; y: number; width: number; height: number };
+export type OcrLine = { text: string; words: OcrWord[] };
+export type OcrWindow = {
+  /** The window rectangle that was captured, in screen pixels. */
+  window: { left: number; top: number; width: number; height: number };
+  lines: OcrLine[];
+};
+
+/** What the UI Automation attempt did. `found: false` covers both "no such
+ *  element" and "UIA exposes nothing for this window". */
+export type UiaRescanOutcome =
+  | { found: false; elementCount: number }
+  | {
+      found: true;
+      elementCount: number;
+      name: string;
+      automationId: string;
+      /** invoke: InvokePattern.Invoke(); click: no pattern, its rectangle's centre was clicked. */
+      action: "invoke" | "click";
+    };

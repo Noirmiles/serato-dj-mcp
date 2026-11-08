@@ -90,6 +90,12 @@ import {
   seratoOpenOutput,
 } from "./tools/serato-open.js";
 import {
+  seratoRescan,
+  seratoRescanDescription,
+  seratoRescanInput,
+  seratoRescanOutput,
+} from "./tools/serato-rescan.js";
+import {
   seratoStatus,
   seratoStatusDescription,
   seratoStatusInput,
@@ -478,6 +484,17 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
           CONTROL,
         ),
         call: async (raw) => toCallToolResult(await seratoOpen(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_rescan",
+          "Re-scan file info in Serato DJ Pro",
+          seratoRescanDescription,
+          seratoRescanInput,
+          seratoRescanOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoRescan(raw, control)),
       },
     );
   }
