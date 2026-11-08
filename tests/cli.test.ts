@@ -12,6 +12,7 @@ describe("parseArgs", () => {
     if (isSeratoError(c) || "help" in c || "version" in c) throw new Error("unexpected");
     expect(c.allowWrites).toBe(false);
     expect(c.allowRawSql).toBe(false);
+    expect(c.allowSeratoControl).toBe(false);
     expect(c.roots).toEqual([]);
     expect(c.cacheDir).toContain("serato-dj-mcp");
     expect(c.stateDir).toContain("serato-dj-mcp");
@@ -81,6 +82,13 @@ describe("parseArgs", () => {
     if (isSeratoError(c) || "help" in c || "version" in c) throw new Error("unexpected");
     expect(c.allowWrites).toBe(true);
     expect(c.allowRawSql).toBe(true);
+  });
+
+  it("turns on serato control only with --allow-serato-control", () => {
+    const c = P(["--allow-serato-control"]);
+    if (isSeratoError(c) || "help" in c || "version" in c) throw new Error("unexpected");
+    expect(c.allowSeratoControl).toBe(true);
+    expect(c.allowWrites).toBe(false);
   });
 
   // engine-dj-mcp silently ignores unknown flags, so a typo of

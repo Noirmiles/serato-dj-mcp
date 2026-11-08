@@ -112,6 +112,8 @@ Add options after `serato-dj-mcp` in `args`, for example
   as forward slashes.
 - `--allow-writes` — crate writing, see below.
 - `--allow-raw-sql` — adds `run_sql`, read-only SQL for developers.
+- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open` and `serato_rescan`,
+  see [Controlling Serato (Windows)](#controlling-serato-windows).
 
 All options are listed under [Options](#options).
 
@@ -258,12 +260,69 @@ With `--allow-writes`:
 - `apply_changes` — write everything staged, all or nothing. Refused while Serato is running.
 - `discard_changes` — drop one staged crate, or all of them.
 
+With `--allow-serato-control`, on Windows only:
+
+- `serato_status` — is Serato DJ Pro running: process name, path and pid, main-window title and
+  whether it responds, audio state, discovered install path, and `looks_idle`.
+- `serato_close` — gracefully close Serato (needs `confirm: true`), see below.
+- `serato_open` — start Serato and wait until its window is ready.
+- `serato_rescan` — press Serato's Re-Scan File Info button (whole library), see below.
+
+## Controlling Serato (Windows)
+
+`--allow-serato-control` registers four tools, and only when the server runs on Windows; on any
+other system the flag registers nothing. None of them writes a Serato file. A plain-language guide
+to these tools and their safety rules is in [docs/serato-control.md](docs/serato-control.md). They run Windows
+PowerShell 5.1 (`powershell.exe`, part of Windows, nothing to install) with built-in .NET, and
+talk to Serato only through its process and its main window.
+
+- `serato_close` asks the main window to close, as the close button does, waits up to
+  `timeout_seconds` (default 30, max 120) for the process to exit, then checks that the
+  `_Serato_database V2` file has not changed in size or modification time for about 2 seconds. It
+  never force-terminates Serato. Serato DJ Pro 4 answers a close request with an "Exit - are you
+  sure?" dialog and keeps running until someone clicks Yes; since `confirm: true` was given and the
+  audio check has already passed, `serato_close` then presses that dialog's Yes/OK button (UI
+  Automation first, else OCR of the Serato window only, then a click; never the full screen). If
+  the dialog is not found, or Serato does not exit (another dialog is waiting for you), the error
+  says it is still running and was NOT killed. The dialog is never confirmed while audio is
+  detected. It is refused while Serato is making
+  sound.
+- Audio detection reads the peak meter of Serato's Windows audio session (core audio,
+  `IAudioMeterInformation`) over about half a second. **Limit:** it only sees audio that goes
+  through the Windows mixer. Serato on an ASIO driver, the usual setup with a DJ controller, has no
+  such session, and the answer is `"unknown"`; the close then proceeds on your confirmation alone
+  and says so in a warning. A paused or silent deck reads as not playing.
+- `looks_idle` in `serato_status` is a hint, not a guarantee: Serato running, window responding,
+  `database V2` unchanged over a 2 second poll. Serato 4 may keep its state in `master.sqlite`
+  instead, in which case that file's silence proves little.
+- `serato_open` finds `Serato DJ Pro.exe` from the `SERATO_DJ_EXE` environment variable if set,
+  otherwise the registry (uninstall and App Paths keys) and the Program Files folders, starts it
+  and waits until the window responds and has a title. If it is not found, set `SERATO_DJ_EXE`.
+- `serato_rescan` (`scope: "library"`, the only value) presses **Re-Scan File Info** (older Serato:
+  Rescan ID3 Tags) in the Files panel so Serato re-reads every file's tags. It writes no library file;
+  Serato does the work, which can take long on a big library. It tries UI Automation first. Serato 4
+  draws its own UI and exposes no such element (checked on 4.0.0.2697), so in practice it falls back
+  to OCR: it brings Serato to the front, reads a screenshot of **the Serato window only** (never the
+  whole screen; kept in memory) with Windows' built-in OCR, opens the Files panel if the button is not
+  visible, and clicks the button with a real mouse click. **Do not use the mouse while it runs**, and
+  keep Serato uncovered. The result says `method` (`uia` or `ocr`) and `verified` (`true` only if a
+  scan message was seen afterwards, `false` if the window was re-read and none appeared,
+  `"unknown"` if it could not be re-read). Rescanning a single folder is **not supported**. Not yet
+  measured: a real rescan click, what Serato shows while scanning, and reliability over repeated
+  runs; see [notes/rescan-spike-results.md](notes/rescan-spike-results.md), which also has the
+  command to measure it.
+
+Status: the PowerShell scripts were run against a real Windows PowerShell 5.1 for process, window and
+install discovery with Serato not running, and the audio enumeration was run to the point of finding
+no session; closing and opening a real Serato, and a positive audio reading, have **not** been
+verified. The tool logic is tested against a fake platform.
+
 ## Options
 
 `--library <path>`, `--root <dir>` (repeatable), `--cache-dir <dir>`,
-`--state-dir <dir>`, `--allow-raw-sql`, `--allow-writes`, `--help`,
+`--state-dir <dir>`, `--allow-raw-sql`, `--allow-writes`, `--allow-serato-control`, `--help`,
 `--version`. `SERATO_LIBRARY_PATH` is an alternative to `--library`;
-the flag wins. An unknown option is an error, not a no-op.
+the flag wins. `SERATO_DJ_EXE` is the full path of `Serato DJ Pro.exe` for `serato_open`. An unknown option is an error, not a no-op.
 
 ## Writing to the library
 

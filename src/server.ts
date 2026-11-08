@@ -7,6 +7,8 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
 import type { Cli } from "./cli.js";
+import type { SeratoPlatform } from "./control/platform.js";
+import { WindowsSeratoPlatform } from "./control/windows.js";
 import { toCallToolResult } from "./envelope.js";
 import {
   applyChanges,
@@ -70,11 +72,35 @@ import {
   searchTracksOutput,
 } from "./tools/search-tracks.js";
 import {
+  seratoClose,
+  seratoCloseDescription,
+  seratoCloseInput,
+  seratoCloseOutput,
+} from "./tools/serato-close.js";
+import {
   seratoInspect,
   seratoInspectDescription,
   seratoInspectInput,
   seratoInspectOutput,
 } from "./tools/serato-inspect.js";
+import {
+  seratoOpen,
+  seratoOpenDescription,
+  seratoOpenInput,
+  seratoOpenOutput,
+} from "./tools/serato-open.js";
+import {
+  seratoRescan,
+  seratoRescanDescription,
+  seratoRescanInput,
+  seratoRescanOutput,
+} from "./tools/serato-rescan.js";
+import {
+  seratoStatus,
+  seratoStatusDescription,
+  seratoStatusInput,
+  seratoStatusOutput,
+} from "./tools/serato-status.js";
 import {
   stageAddToCrate,
   stageAddToCrateDescription,
@@ -121,6 +147,16 @@ const DESTRUCTIVE_WRITE = {
 /** Discarding the same staged id, or everything, a second time changes
  *  nothing more. */
 const IDEMPOTENT_DESTRUCTIVE_WRITE = { ...DESTRUCTIVE_WRITE, idempotentHint: true } as const;
+
+/** Closing Serato ends the user's session and cannot be undone by this server,
+ *  so it is advertised as a non-idempotent action; it never writes a library
+ *  file, and it never forces anything, so destructiveHint stays false. */
+const CONTROL = {
+  readOnlyHint: false,
+  destructiveHint: false,
+  idempotentHint: false,
+  openWorldHint: false,
+} as const;
 
 const names = new WeakMap<Server, string[]>();
 
@@ -184,7 +220,13 @@ function describeTool(
  * validation is something this server is better off without -- it is what
  * destroyed every error response in the outputSchema defect fixed in 62cbab3.
  */
-export function createServer(cli: Cli): Server {
+export type ServerOptions = {
+  /** Test seams: the host OS, and the backend the control tools use. */
+  hostPlatform?: NodeJS.Platform;
+  seratoPlatform?: SeratoPlatform;
+};
+
+export function createServer(cli: Cli, options: ServerOptions = {}): Server {
   const server = new Server(
     { name: "serato-dj-mcp", version: VERSION },
     { capabilities: { tools: {} } },
@@ -400,6 +442,59 @@ export function createServer(cli: Cli): Server {
           IDEMPOTENT_DESTRUCTIVE_WRITE,
         ),
         call: async (raw) => toCallToolResult(await discardChanges(raw, writeCtx)),
+      },
+    );
+  }
+
+  // Windows only, and only when asked: the backend is PowerShell + Win32/COM,
+  // and none of these tools can exist where it cannot work.
+  if (cli.allowSeratoControl && (options.hostPlatform ?? process.platform) === "win32") {
+    const control = {
+      platform: options.seratoPlatform ?? new WindowsSeratoPlatform({ libraryHint: cli.library }),
+    };
+    entries.push(
+      {
+        descriptor: describeTool(
+          "serato_status",
+          "Check whether Serato DJ Pro is running",
+          seratoStatusDescription,
+          seratoStatusInput,
+          seratoStatusOutput,
+        ),
+        call: async (raw) => toCallToolResult(await seratoStatus(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_close",
+          "Gracefully close Serato DJ Pro",
+          seratoCloseDescription,
+          seratoCloseInput,
+          seratoCloseOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoClose(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_open",
+          "Start Serato DJ Pro",
+          seratoOpenDescription,
+          seratoOpenInput,
+          seratoOpenOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoOpen(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_rescan",
+          "Re-scan file info in Serato DJ Pro",
+          seratoRescanDescription,
+          seratoRescanInput,
+          seratoRescanOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoRescan(raw, control)),
       },
     );
   }

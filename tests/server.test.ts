@@ -17,6 +17,7 @@ const cli = (over: Partial<Parameters<typeof createServer>[0]> = {}) => {
     stateDir: mkdtempSync(join(tmpdir(), "serato-state-")),
     allowWrites: false,
     allowRawSql: false,
+    allowSeratoControl: false,
     ...over,
   };
 };

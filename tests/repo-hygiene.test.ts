@@ -96,6 +96,21 @@ const PUBLIC_DIGESTS = [
   "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc",
 ];
 
+// Microsoft's published Windows core-audio COM interface and class ids (MMDevice
+// API, audioclient.h / audiopolicy.h), declared in src/control/windows.ts so it
+// can read Serato's audio meter. Public SDK constants, not a library's identity;
+// listed by value so no other UUID can pass as one.
+const PUBLIC_COM_IIDS = [
+  "bcde0395e52f467c8e3dc4579291692e",
+  "a95664d296144f35a746de8db63617e6",
+  "0bd7a1be7a1a44db8397cc5392387b5e",
+  "d666063f15874e4381f1b948e807363f",
+  "77aa99a01bd6484f8bc72c654c9a9b6f",
+  "e2f5bb11057040caacdd3aa01277dee8",
+  "bfb7ff8872394fc98fa207c950be9c6d",
+  "c02216f68c674b5b9d00d008e73e0064",
+];
+
 describe("repository hygiene", () => {
   it("tracks no file list of its own that git does not know about", () => {
     // Guards the guard: an empty tracked list would make every rule vacuous.
@@ -123,7 +138,7 @@ describe("repository hygiene", () => {
   // carry either synthetic id, or the real thing. Kept as its own rule so a
   // failure says which form slipped through.
   it("carries no database identifier as a bare hex run either", () => {
-    const allowed = new Set([...SYNTHETIC_IDS, ...PUBLIC_DIGESTS]);
+    const allowed = new Set([...SYNTHETIC_IDS, ...PUBLIC_DIGESTS, ...PUBLIC_COM_IIDS]);
     const found: string[] = [];
     forEachLine((path, lineNo, line) => {
       for (const m of line.matchAll(/[0-9a-f-]+/gi)) {

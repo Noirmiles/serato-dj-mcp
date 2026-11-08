@@ -5,6 +5,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
 import { describe, expect, it } from "vitest";
 import { createServer } from "../src/server.js";
+import { FakePlatform } from "./control/fake.js";
 import { makeMasterFixture } from "./fixtures/make.js";
 
 const tmp = () => mkdtempSync(join(tmpdir(), "serato-ann-"));
@@ -72,6 +73,30 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Inspect the Serato library layout",
   },
+  serato_status: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Check whether Serato DJ Pro is running",
+  },
+  serato_close: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Gracefully close Serato DJ Pro",
+  },
+  serato_open: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Start Serato DJ Pro",
+  },
+  serato_rescan: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Re-scan file info in Serato DJ Pro",
+  },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
   stage_add_to_crate: {
@@ -104,14 +129,18 @@ describe("tool annotations over tools/list", () => {
   it("every tool, with every flag on, carries a title and all four hints", async () => {
     const dir = tmp();
     makeMasterFixture(dir, { tracks: [] });
-    const server = createServer({
-      library: dir,
-      roots: [],
-      cacheDir: tmp(),
-      stateDir: tmp(),
-      allowWrites: true,
-      allowRawSql: true,
-    });
+    const server = createServer(
+      {
+        library: dir,
+        roots: [],
+        cacheDir: tmp(),
+        stateDir: tmp(),
+        allowWrites: true,
+        allowRawSql: true,
+        allowSeratoControl: true,
+      },
+      { hostPlatform: "win32", seratoPlatform: new FakePlatform() },
+    );
     const [serverTransport, clientTransport] = InMemoryTransport.createLinkedPair();
     const client = new Client({ name: "test-client", version: "0.0.0" });
     await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
