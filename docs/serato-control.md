@@ -35,6 +35,26 @@ On macOS and Linux the flag does nothing. On Windows it adds these four tools:
   changes made to files outside Serato show up in Serato. It takes only `scope: "library"`, which
   is also the only value allowed. Rescanning a single folder is not supported.
 
+## Command line (for other programs)
+
+The same four actions can be run without an MCP client, for scripts and other programs. It calls
+the same code as the tools, so the safety rules below apply unchanged (graceful close only, audio
+check, never kills Serato). Windows only.
+
+```
+node dist/control-cli.js <status|close|open|rescan> [--timeout-seconds N]
+```
+
+- `close` always passes `confirm: true`: running it is the confirmation. `rescan` uses scope
+  `library`. `--timeout-seconds` applies to `close` and `open` only.
+- It prints exactly one line of JSON on stdout. On success it is `{"ok":true,"result":{...}}`,
+  where `result` is what the matching tool returns (for example `{"ok":true,"result":{"running":false,...}}`
+  for `status`). On any failure it is `{"ok":false,"error":{"code":"...","message":"..."}}`
+  (`details` is included when the tool gave some). Error codes are the tools' own, plus
+  `not_supported` (not Windows) and `invalid_argument` (bad command line).
+- Exit code: `0` ok, `1` failure (including Serato still running after `close`), `2` bad usage.
+- `SERATO_LIBRARY_PATH` and `SERATO_DJ_EXE` are read from the environment as for the server.
+
 ## Safety rules
 
 - **Graceful close only.** `serato_close` asks the window to close and never forces anything to

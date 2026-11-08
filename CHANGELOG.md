@@ -13,6 +13,9 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `dist/control-cli.js` (Windows only): `node dist/control-cli.js <status|close|open|rescan> [--timeout-seconds N]`
+  runs the `serato_*` logic directly, without MCP, and prints one JSON line (`{"ok":true,"result":...}` or
+  `{"ok":false,"error":{...}}`); exit code 0 ok, 1 failure, 2 bad usage. See docs/serato-control.md.
 - `serato_close` now handles Serato DJ Pro 4's "Exit - are you sure?" dialog: after the close request, if
   Serato is still running it presses the dialog's Yes/OK button (UI Automation, else window-scoped OCR
   click). Still never kills; reports "still running, NOT killed" if the dialog is not found. Never
