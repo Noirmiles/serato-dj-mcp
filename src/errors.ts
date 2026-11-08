@@ -28,6 +28,9 @@ export const ERROR_CODES = {
   launch_failed: "launch_failed",
   launch_timeout: "launch_timeout",
   control_failed: "control_failed",
+  serato_not_running: "serato_not_running",
+  serato_window_not_ready: "serato_window_not_ready",
+  rescan_button_not_found: "rescan_button_not_found",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;

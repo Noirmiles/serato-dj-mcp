@@ -13,6 +13,14 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `serato_rescan` (with `--allow-serato-control`, Windows only): presses Serato DJ Pro's Re-Scan File
+  Info button for the whole library. UI Automation first, then an OCR fallback (built-in
+  `Windows.Media.Ocr` on a screenshot of the Serato window only, then a synthesised mouse click,
+  opening the Files panel if needed). Reports `method` and `verified` (`true`/`false`/`"unknown"`).
+  Checked on Serato 4.0.0.2697: UIA exposes nothing, OCR locates the button and the Files tab, and a
+  click on the Files tab works; the rescan click itself and its reliability are **not measured**
+  (see `notes/rescan-spike-results.md`). Per-folder rescan is not supported. New scripts:
+  `scripts/serato-uia-spike.ps1`, `scripts/serato-rescan-reliability.ps1`.
 - `--allow-serato-control` (Windows only): registers `serato_status`, `serato_close` and
   `serato_open`. Status reports the process, main window, audio state and install path;
   `looks_idle` is a polled hint. Close is graceful only (`confirm: true`, refused while audio is

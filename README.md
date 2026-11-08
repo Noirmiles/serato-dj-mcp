@@ -112,7 +112,7 @@ Add options after `serato-dj-mcp` in `args`, for example
   as forward slashes.
 - `--allow-writes` — crate writing, see below.
 - `--allow-raw-sql` — adds `run_sql`, read-only SQL for developers.
-- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close` and `serato_open`,
+- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open` and `serato_rescan`,
   see [Controlling Serato (Windows)](#controlling-serato-windows).
 
 All options are listed under [Options](#options).
@@ -266,10 +266,11 @@ With `--allow-serato-control`, on Windows only:
   whether it responds, audio state, discovered install path, and `looks_idle`.
 - `serato_close` — gracefully close Serato (needs `confirm: true`), see below.
 - `serato_open` — start Serato and wait until its window is ready.
+- `serato_rescan` — press Serato's Re-Scan File Info button (whole library), see below.
 
 ## Controlling Serato (Windows)
 
-`--allow-serato-control` registers three tools, and only when the server runs on Windows; on any
+`--allow-serato-control` registers four tools, and only when the server runs on Windows; on any
 other system the flag registers nothing. None of them writes a Serato file. They run Windows
 PowerShell 5.1 (`powershell.exe`, part of Windows, nothing to install) with built-in .NET, and
 talk to Serato only through its process and its main window.
@@ -291,6 +292,19 @@ talk to Serato only through its process and its main window.
 - `serato_open` finds `Serato DJ Pro.exe` from the `SERATO_DJ_EXE` environment variable if set,
   otherwise the registry (uninstall and App Paths keys) and the Program Files folders, starts it
   and waits until the window responds and has a title. If it is not found, set `SERATO_DJ_EXE`.
+- `serato_rescan` (`scope: "library"`, the only value) presses **Re-Scan File Info** (older Serato:
+  Rescan ID3 Tags) in the Files panel so Serato re-reads every file's tags. It writes no library file;
+  Serato does the work, which can take long on a big library. It tries UI Automation first. Serato 4
+  draws its own UI and exposes no such element (checked on 4.0.0.2697), so in practice it falls back
+  to OCR: it brings Serato to the front, reads a screenshot of **the Serato window only** (never the
+  whole screen; kept in memory) with Windows' built-in OCR, opens the Files panel if the button is not
+  visible, and clicks the button with a real mouse click. **Do not use the mouse while it runs**, and
+  keep Serato uncovered. The result says `method` (`uia` or `ocr`) and `verified` (`true` only if a
+  scan message was seen afterwards, `false` if the window was re-read and none appeared,
+  `"unknown"` if it could not be re-read). Rescanning a single folder is **not supported**. Not yet
+  measured: a real rescan click, what Serato shows while scanning, and reliability over repeated
+  runs; see [notes/rescan-spike-results.md](notes/rescan-spike-results.md), which also has the
+  command to measure it.
 
 Status: the PowerShell scripts were run against a real Windows PowerShell 5.1 for process, window and
 install discovery with Serato not running, and the audio enumeration was run to the point of finding

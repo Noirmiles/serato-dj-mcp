@@ -167,6 +167,13 @@ future feature. Anything less stays a hypothesis. Record the Serato version, ope
 schema `user_version` with the results; behaviour on Windows especially is unmeasured (see
 serato-4x-notes.md, "Windows").
 
+## Update: driving the button (serato_rescan)
+
+The `serato_rescan` tool presses the Files-panel button through UI Automation or OCR plus a
+synthesised click. What was and was not measured on Serato 4.0.0.2697 is in
+[../notes/rescan-spike-results.md](../notes/rescan-spike-results.md). It does not change the
+conclusions above: nothing writes `asset` rows, and Serato itself does the re-reading.
+
 ## Recommendation until something is measured
 
 Do not write to `asset` rows. If a feature is wanted, the honest version is a message to the user:
