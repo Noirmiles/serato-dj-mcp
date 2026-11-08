@@ -14,6 +14,10 @@ export const MAX_CLOSE_TIMEOUT_SECONDS = 120;
 export const DEFAULT_CLOSE_TIMEOUT_SECONDS = 30;
 /** Pairs of database-file stats tried before giving up on it settling. */
 const STABILITY_ATTEMPTS = 3;
+/** Serato asks "Exit - are you sure?" a moment after the close request. */
+const DIALOG_FIRST_CHECK_MS = 1000;
+const DIALOG_RETRY_MS = 3000;
+const DIALOG_MAX_ATTEMPTS = 3;
 
 export const seratoCloseInput = z
   .object({
@@ -32,12 +36,13 @@ export const seratoCloseInput = z
 
 export const seratoCloseDescription =
   "Gracefully close Serato DJ Pro (Windows only, needs --allow-serato-control): asks its main " +
-  "window to close, exactly like the close button, waits up to timeout_seconds (default 30, max " +
+  "window to close, exactly like the close button (if Serato answers with its 'Exit - are you sure?' " +
+  "dialog, that dialog's Yes/OK button is pressed -- only ever after the audio check passed), waits up to timeout_seconds (default 30, max " +
   "120) for the process to exit, then confirms the _Serato_ 'database V2' file stopped changing " +
   "for ~2 seconds. It never forces anything to end. Refused with audio_playing when the audio " +
   "meter shows sound (if the meter cannot be read the answer is 'unknown' and the close goes " +
   "ahead). If Serato does not exit -- usually because a dialog is waiting for the user -- the " +
-  "error says it is still running and was NOT killed. Needs confirm: true; get the user's " +
+  "error says it is still running and was NOT killed (also when no exit dialog could be found). Needs confirm: true; get the user's " +
   "go-ahead first, since unsaved DJ work is theirs to decide about. Closing Serato is what makes " +
   "apply_changes possible.";
 
@@ -105,10 +110,21 @@ export async function seratoClose(
 
     const deadline = started + args.timeout_seconds * 1000;
     let alive = true;
+    let dialogAttempts = 0;
+    let dialogConfirmed = false;
+    let nextDialogCheck = started + DIALOG_FIRST_CHECK_MS;
     while (now() < deadline) {
       await sleep(POLL_MS);
       alive = await p.isProcessAlive(proc.pid);
       if (!alive) break;
+      // Still alive: Serato 4 shows an "Exit - are you sure?" dialog and waits
+      // for an answer. Audio was already checked above, so reaching here means
+      // the user's confirm: true plus a silent (or unknowable) meter.
+      if (!dialogConfirmed && dialogAttempts < DIALOG_MAX_ATTEMPTS && now() >= nextDialogCheck) {
+        dialogAttempts++;
+        nextDialogCheck = now() + DIALOG_RETRY_MS;
+        dialogConfirmed = (await p.confirmExitDialog(proc.pid)) === "clicked";
+      }
     }
     if (alive) alive = await p.isProcessAlive(proc.pid);
     if (alive) {

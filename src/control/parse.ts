@@ -166,3 +166,7 @@ export function parseClick(stdout: string): void {
   if (!p.success) throw new PlatformError("unreadable click result");
   if (!p.data.ok) throw new PlatformError(p.data.error ?? "click was not delivered");
 }
+
+export function parseConfirmClicked(stdout: string): boolean {
+  return parseBool(stdout, "clicked");
+}

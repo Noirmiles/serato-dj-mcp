@@ -1,3 +1,4 @@
+import { CONFIRM_BUTTON_UIA_PATTERN, EXIT_DIALOG_UIA_PATTERN } from "./dialog-match.js";
 import { PlatformError } from "./platform.js";
 import { RESCAN_UIA_PATTERN } from "./rescan-match.js";
 
@@ -153,6 +154,37 @@ if ($h -eq [IntPtr]::Zero) { @{ ok = $false; error = 'Serato has no main window'
 $why = Click-Point $h $cx $cy
 if ($why) { @{ ok = $false; error = $why } | ConvertTo-Json -Compress } else { @{ ok = $true } | ConvertTo-Json -Compress }`;
 
+/**
+ * Exit-confirmation dialog: top-level windows of the Serato process other than
+ * the main window (plus window-type descendants of it) are searched through UI
+ * Automation; one whose text matches the dialog pattern and which has a
+ * Yes / OK button gets that button invoked (InvokePattern only: no mouse, no
+ * keyboard, no screen capture).
+ */
+const UIA_CONFIRM_BODY = String.raw`
+$tops = @()
+$pidCond = New-Object Windows.Automation.PropertyCondition ([Windows.Automation.AutomationElement]::ProcessIdProperty), $procId
+foreach ($t in [Windows.Automation.AutomationElement]::RootElement.FindAll([Windows.Automation.TreeScope]::Children, $pidCond)) {
+  if ($t.Current.NativeWindowHandle -ne [int64]$h) { $tops += $t }
+}
+if ($h -ne [IntPtr]::Zero) {
+  $winCond = New-Object Windows.Automation.PropertyCondition ([Windows.Automation.AutomationElement]::ControlTypeProperty), ([Windows.Automation.ControlType]::Window)
+  foreach ($t in [Windows.Automation.AutomationElement]::FromHandle($h).FindAll([Windows.Automation.TreeScope]::Descendants, $winCond)) { $tops += $t }
+}
+foreach ($d in $tops) {
+  $els = @($d.FindAll([Windows.Automation.TreeScope]::Descendants, [Windows.Automation.Condition]::TrueCondition))
+  $text = @($d.Current.Name) + @($els | ForEach-Object { $_.Current.Name })
+  if (-not ($text | Where-Object { $_ -match $dlg })) { continue }
+  $btn = $els | Where-Object { $_.Current.ControlType -eq [Windows.Automation.ControlType]::Button -and $_.Current.Name -match $bpat } | Select-Object -First 1
+  if (-not $btn) { continue }
+  $ip = $null
+  if ($btn.TryGetCurrentPattern([Windows.Automation.InvokePattern]::Pattern, [ref]$ip)) {
+    $ip.Invoke()
+    @{ clicked = $true; name = $btn.Current.Name } | ConvertTo-Json -Compress; return
+  }
+}
+@{ clicked = $false } | ConvertTo-Json -Compress`;
+
 function handleLine(pid: number): string {
   return `\n$h = Get-SeratoHandle ${assertPid(pid)}`;
 }
@@ -165,6 +197,13 @@ export const WINDOW_SCRIPTS = {
     handleLine(pid) +
     `\n$pat = '${RESCAN_UIA_PATTERN}'` +
     UIA_RESCAN_BODY,
+  uiaConfirmExit: (pid: number) =>
+    WIN32_PRELUDE +
+    UIA_PRELUDE +
+    handleLine(pid) +
+    `
+$procId = ${assertPid(pid)}; $dlg = '${EXIT_DIALOG_UIA_PATTERN}'; $bpat = '${CONFIRM_BUTTON_UIA_PATTERN}'` +
+    UIA_CONFIRM_BODY,
   uiaText: (pid: number) => WIN32_PRELUDE + UIA_PRELUDE + handleLine(pid) + UIA_TEXT_BODY,
   ocr: (pid: number) => WIN32_PRELUDE + handleLine(pid) + OCR_BODY,
   click: (pid: number, x: number, y: number) =>

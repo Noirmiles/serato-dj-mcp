@@ -13,6 +13,11 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `serato_close` now handles Serato DJ Pro 4's "Exit - are you sure?" dialog: after the close request, if
+  Serato is still running it presses the dialog's Yes/OK button (UI Automation, else window-scoped OCR
+  click). Still never kills; reports "still running, NOT killed" if the dialog is not found. Never
+  confirmed when audio is playing.
+
 - `serato_rescan` (with `--allow-serato-control`, Windows only): presses Serato DJ Pro's Re-Scan File
   Info button for the whole library. UI Automation first, then an OCR fallback (built-in
   `Windows.Media.Ocr` on a screenshot of the Serato window only, then a synthesised mouse click,
@@ -24,7 +29,7 @@ been run against a Serato installation on Windows, and the README's
 - `--allow-serato-control` (Windows only): registers `serato_status`, `serato_close` and
   `serato_open`. Status reports the process, main window, audio state and install path;
   `looks_idle` is a polled hint. Close is graceful only (`confirm: true`, refused while audio is
-  detected, never force-terminates, reports "still running, NOT killed" on timeout, then checks
+  detected, confirms Serato's "Exit - are you sure?" dialog after the close request, never force-terminates, reports "still running, NOT killed" on timeout, then checks
   `database V2` is stable). Open launches from `SERATO_DJ_EXE` or a discovered install and waits for
   the window. Backed by Windows PowerShell 5.1 behind a `SeratoPlatform` interface; writes no
   library file. Scripts checked on real PowerShell with Serato not running only; tool logic is

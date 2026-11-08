@@ -1,5 +1,6 @@
 import type {
   AudioState,
+  ExitDialogResult,
   FileStat,
   OcrWindow,
   ProcessInfo,
@@ -41,6 +42,10 @@ export class FakePlatform implements SeratoPlatform {
   private ocrCalls = 0;
   onTick: (fake: FakePlatform) => void = () => {};
   private closeRequested = false;
+  /** Serato shows an exit confirmation after close and stays alive until it is confirmed. */
+  exitDialog: "none" | "shown" = "none";
+  /** What confirmExitDialog finds when the dialog is shown. */
+  dialogFindable = true;
 
   static running(over: Partial<FakePlatform> = {}): FakePlatform {
     const f = new FakePlatform();
@@ -52,7 +57,7 @@ export class FakePlatform implements SeratoPlatform {
 
   readonly sleep = async (ms: number) => {
     this.time += ms;
-    if (this.closeRequested && this.exitsOnClose) {
+    if (this.closeRequested && this.exitsOnClose && this.exitDialog === "none") {
       this.alive = false;
       this.proc = null;
       this.window = null;
@@ -73,6 +78,14 @@ export class FakePlatform implements SeratoPlatform {
     this.calls.push(`requestClose:${pid}`);
     if (this.closeDelivered) this.closeRequested = true;
     return this.closeDelivered;
+  }
+  async confirmExitDialog(pid: number): Promise<ExitDialogResult> {
+    this.calls.push(`confirmExitDialog:${pid}`);
+    if (this.exitDialog === "shown" && this.dialogFindable) {
+      this.exitDialog = "none"; // confirmed: the next tick lets the process exit
+      return "clicked";
+    }
+    return "not_found";
   }
   async isProcessAlive(pid: number) {
     this.calls.push(`isProcessAlive:${pid}`);
