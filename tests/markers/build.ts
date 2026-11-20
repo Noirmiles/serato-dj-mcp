@@ -22,9 +22,10 @@ export const loopEntry = (
   end: number,
   locked: boolean,
   name: string,
+  type = "LOOP",
 ): Buffer =>
   entry(
-    "LOOP",
+    type,
     Buffer.concat([
       Buffer.from([0, index]),
       u32(start),

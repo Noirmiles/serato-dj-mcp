@@ -1,7 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 
-/** Schema versions seen on a real install. 202 = Serato DJ Lite 4.0.9. */
-export const KNOWN_USER_VERSIONS: readonly number[] = [202];
+/** Schema versions seen on a real install. 202 = Serato 4.x (DJ Lite 4.0.9), 203 = Serato DJ Pro 5.0. */
+export const KNOWN_USER_VERSIONS: readonly number[] = [202, 203];
 
 export type SchemaInfo = {
   userVersion: number;

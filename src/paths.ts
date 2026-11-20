@@ -69,21 +69,23 @@ function isWindowsRoot(volumeRoot: string): boolean {
  *   /Users/v/Library/Application Support/Serato/Library/root.sqlite     -> "/"
  *   /Volumes/EXTDISK/_Serato_/Library/location.sqlite                   -> "/Volumes/EXTDISK"
  *
- * The Windows forms below are an ASSUMPTION, not a measurement: no
- * master.sqlite written by Serato on Windows has been examined, so what it
- * puts in database_uri there is unknown. They assume a plain path with a
- * drive letter (or a \\server\share prefix) and either separator:
- *   D:\_Serato_\Library\location.sqlite                                 -> "D:\"
- *   D:/_Serato_/Library/location.sqlite                                 -> "D:\"
+ * The Windows forms were measured on Serato 5 (2026-11-20): root.sqlite and
+ * spotify.sqlite use the backslash form
+ * `C:\Users\<user>\AppData\Local\Serato\Library\root.sqlite`, an external
+ * drive uses the forward-slash form `E:/_Serato_/Library/location.sqlite`,
+ * and the rows persist after Serato exits. Both separators are accepted:
+ *   E:\_Serato_\Library\location.sqlite                                 -> "E:\"
+ *   E:/_Serato_/Library/location.sqlite                                 -> "E:\"
  *   C:\Users\v\AppData\Local\Serato\Library\root.sqlite                 -> "C:\"
- *   \\nas\music\_Serato_\Library\location.sqlite                        -> "\\nas\music"
+ *   \nas\music\_Serato_\Library\location.sqlite                        -> "\nas\music"
  * What was measured, on 2026-10-12 in a location.sqlite that Serato created
  * on a Windows drive (schema 202): asset.portable_id is relative to the
  * drive's root, with forward slashes and no leading slash. A drive root is
- * returned as `D:\` and never as `D:`, which Windows reads as "the current
- * directory on D:". Any other Windows path -- another filename, a root.sqlite
+ * returned as `E:\` and never as `E:`, which Windows reads as "the current
+ * directory on E:". Any other Windows path -- another filename, a root.sqlite
  * on a network share -- is unrecognised, and the caller reports that
- * location's root as unknown rather than guessing one.
+ * location's root as unknown rather than guessing one. Serato 5 also lists
+ * spotify.sqlite and remote_libraries.sqlite: not volumes, see isNonVolumeStoreUri.
  */
 export function volumeRootFromDatabaseUri(uri: string): string {
   if (WINDOWS_DRIVE_PATH.test(uri) || WINDOWS_UNC_PATH.test(uri)) {
@@ -108,6 +110,14 @@ export function volumeRootFromDatabaseUri(uri: string): string {
  * ignored because this replaces a SQL `LIKE '%/root.sqlite'`, which ignores
  * it for ASCII: the POSIX answer is the one that query gave.
  */
+/**
+ * Serato 5 also lists its Spotify and remote-library stores in connection
+ * (measured 2026-11-20). They are not volumes: callers skip them quietly.
+ */
+export function isNonVolumeStoreUri(uri: string): boolean {
+  return /[\\/](spotify|remote_libraries)\.sqlite$/i.test(uri);
+}
+
 export function isRootStoreUri(uri: string): boolean {
   const lower = uri.toLowerCase();
   return lower.endsWith("/root.sqlite") || lower.endsWith("\\root.sqlite");

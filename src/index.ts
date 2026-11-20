@@ -5,7 +5,7 @@ import { isSeratoError } from "./errors.js";
 import { createServer } from "./server.js";
 import { PACKAGE_VERSION as VERSION } from "./version.js";
 
-export const HELP = `serato-dj-mcp ${VERSION} -- MCP server for the Serato DJ 4.x library
+export const HELP = `serato-dj-mcp ${VERSION} -- MCP server for the Serato DJ 4.x/5.x library
 
 Usage: serato-dj-mcp [options]
 

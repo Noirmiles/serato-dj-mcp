@@ -3,6 +3,7 @@ import { win32 } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
   expandHome,
+  isNonVolumeStoreUri,
   isRootStoreUri,
   isStreamingPortableId,
   type PathEnv,
@@ -106,6 +107,16 @@ describe("paths", () => {
     expect(volumeRootFromDatabaseUri("\\\\nas\\music\\_Serato_\\Library\\location.sqlite")).toBe(
       "\\\\nas\\music",
     );
+  });
+
+  it("recognises Serato 5's spotify and remote-library stores as non-volumes", () => {
+    const lib = String.raw`C:\Users\v\AppData\Local\Serato\Library`;
+    expect(isNonVolumeStoreUri(`${lib}\\spotify.sqlite`)).toBe(true);
+    expect(isNonVolumeStoreUri(`${lib}\\Remote_Libraries.sqlite`)).toBe(true);
+    expect(isNonVolumeStoreUri("/Users/v/Serato/Library/spotify.sqlite")).toBe(true);
+    expect(isNonVolumeStoreUri(`${lib}\\root.sqlite`)).toBe(false);
+    expect(isNonVolumeStoreUri("E:/_Serato_/Library/location.sqlite")).toBe(false);
+    expect(volumeRootFromDatabaseUri("E:/_Serato_/Library/location.sqlite")).toBe("E:\\");
   });
 
   it("names root.sqlite as the boot disk's store in either form", () => {
