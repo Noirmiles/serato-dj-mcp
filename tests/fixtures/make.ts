@@ -112,7 +112,12 @@ export function makeMasterFixture(
 
   // exec() applies the whole DDL in one go. Splitting on ";" would corrupt
   // trigger bodies, which contain semicolons inside BEGIN...END.
-  db.exec(readFileSync(join(HERE, "schema", "master-202.sql"), "utf8"));
+  db.exec(
+    readFileSync(
+      join(HERE, "schema", `master-${opts.userVersion === 203 ? 203 : 202}.sql`),
+      "utf8",
+    ),
+  );
   for (const t of RUNTIME_FUNCTION_TRIGGERS) db.exec(`DROP TRIGGER IF EXISTS ${t}`);
   db.exec(`PRAGMA user_version = ${opts.userVersion ?? 202}`);
 
@@ -325,6 +330,9 @@ export function makeRootFixture(
     tracks?: TrackSeed[];
     crates?: { name: string; trackPortableIds: string[] }[];
     revision?: number;
+    /** 203 builds a Serato DJ Pro 5 root; anything else uses the 202 schema.
+     *  user_version is only set when given, as before. */
+    userVersion?: number;
   } = {},
 ): string {
   const path = join(dir, "root.sqlite");
@@ -332,7 +340,10 @@ export function makeRootFixture(
   const db = new DatabaseSync(path);
   // One transaction, for the reason given in makeMasterFixture.
   db.exec("BEGIN");
-  db.exec(readFileSync(join(HERE, "schema", "root-202.sql"), "utf8"));
+  db.exec(
+    readFileSync(join(HERE, "schema", `root-${opts.userVersion === 203 ? 203 : 202}.sql`), "utf8"),
+  );
+  if (opts.userVersion !== undefined) db.exec(`PRAGMA user_version = ${opts.userVersion}`);
 
   db.prepare("INSERT INTO serato (time_created, revision) VALUES (?, ?)").run(1_700_000_000, rev);
   db.prepare(
@@ -414,15 +425,19 @@ export function makeLibraryFixture(
     crates?: CrateSeed[];
     /** See makeMasterFixture: the uri master.sqlite records for this store. */
     connectionUri?: string;
+    /** 203 builds both databases as Serato DJ Pro 5 (default: the 202 schema). */
+    userVersion?: number;
   } = {},
 ): { masterPath: string; rootPath: string } {
   const masterPath = makeMasterFixture(dir, {
     tracks: opts.tracks,
     crates: opts.crates,
     connectionUri: opts.connectionUri,
+    userVersion: opts.userVersion,
   });
   const byExternalId = new Map((opts.tracks ?? []).map((t) => [t.externalId, t.portableId]));
   const rootPath = makeRootFixture(dir, {
+    userVersion: opts.userVersion,
     tracks: opts.tracks,
     crates: (opts.crates ?? []).map((c) => ({
       name: c.name,
