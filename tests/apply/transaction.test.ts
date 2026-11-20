@@ -32,9 +32,18 @@ const crate = (stagedId: string, name: string, portableIds: string[]): StagedCra
   staged_at: "2026-09-14T10:00:00.000Z",
 });
 
-function setup(opts: { crates?: { id: number; name: string; trackExternalIds: number[] }[] } = {}) {
+function setup(
+  opts: {
+    crates?: { id: number; name: string; trackExternalIds: number[] }[];
+    userVersion?: number;
+  } = {},
+) {
   const dir = tmp();
-  const { masterPath, rootPath } = makeLibraryFixture(dir, { tracks: TRACKS, crates: opts.crates });
+  const { masterPath, rootPath } = makeLibraryFixture(dir, {
+    tracks: TRACKS,
+    crates: opts.crates,
+    userVersion: opts.userVersion,
+  });
   const probe = new DatabaseSync(rootPath, { readOnly: true });
   const generation = rootGeneration(probe, rootPath, "lib000000001");
   probe.close();
@@ -316,6 +325,17 @@ describe("applyCrates", () => {
     const r = applyCrates(input([crate("s1", "A", ["Users/x/1.flac"])]));
     expect(isSeratoError(r) && r.error.details?.reason).toBe("space_revision_ahead");
     expect(revisions(read)).toEqual({ sr: ROOT_BASE_REVISION, spr: ROOT_BASE_REVISION + 5 });
+  });
+
+  it("refuses a Serato 5 (user_version 203) library and writes nothing", () => {
+    const { input, read } = setup({ userVersion: 203 });
+    const containers = () => read<{ n: number }>("SELECT count(*) AS n FROM container")[0].n;
+    const before = { containers: containers(), revisions: revisions(read) };
+    const r = applyCrates(input([crate("s1", "A", ["Users/x/1.flac"])]));
+    expect(isSeratoError(r) && r.error.code).toBe("write_refused");
+    expect(isSeratoError(r) && r.error.details?.reason).toBe("serato5_unmapped_crate");
+    expect(isSeratoError(r) && r.error.details?.user_version).toBe(203);
+    expect({ containers: containers(), revisions: revisions(read) }).toEqual(before);
   });
 
   it("refuses a missing root.sqlite without creating one", () => {

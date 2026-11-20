@@ -42,6 +42,15 @@ export function checkRootSchema(root: DatabaseSync): null | SeratoError {
       },
     );
   }
+  const userVersion = (root.prepare("PRAGMA user_version").get() as { user_version: number })
+    .user_version;
+  if (userVersion >= 203) {
+    return refuse(
+      "serato5_unmapped_crate",
+      "Serato DJ Pro 5 (schema 203+) needs a master.sqlite mapping for every new crate; this server does not write master.sqlite yet, so apply is refused to keep Serato from disconnecting the library",
+      { user_version: userVersion },
+    );
+  }
   return null;
 }
 
