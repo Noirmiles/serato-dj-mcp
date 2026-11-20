@@ -52,6 +52,18 @@ describe("parseMarkers2", () => {
     expect(markers).toMatchObject(expected);
   });
 
+  it("decodes CUELOOP like LOOP into cue_loops", () => {
+    const { markers, unparsed } = (({ markers }) => ({
+      markers,
+      unparsed: markers.unparsed_entry_types,
+    }))(parseMarkers2(markers2Payload([loopEntry(1, 100, 900, false, "CL", "CUELOOP")])));
+    expect(markers.cue_loops).toEqual([
+      { index: 1, start_ms: 100, end_ms: 900, locked: false, name: "CL" },
+    ]);
+    expect(markers.loops).toEqual([]);
+    expect(unparsed).toEqual([]);
+  });
+
   it("reports an entry type it cannot decode instead of dropping it silently", () => {
     const { markers } = parseMarkers2(markers2Payload([entry("FLIP", Buffer.alloc(5))]));
     expect(markers.unparsed_entry_types).toEqual(["FLIP"]);

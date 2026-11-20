@@ -38,6 +38,12 @@ describe("schema introspection", () => {
   // Serato ships 51 migrations and bumps the schema between minor releases.
   // An unknown version must warn, never refuse: a server that dies on every
   // Serato update is useless.
+  it("knows Serato DJ Pro 5.0 (user_version 203)", () => {
+    const info = introspect(open(203));
+    expect(KNOWN_USER_VERSIONS).toContain(203);
+    expect(info.known).toBe(true);
+  });
+
   it("marks an unknown version without throwing", () => {
     const db = open(999);
     const info = introspect(db);

@@ -22,9 +22,11 @@ export type Loop = {
 export type Markers2 = {
   cues: Cue[];
   loops: Loop[];
+  /** Serato 5 CUELOOP: a cue with a loop; layout assumed same as LOOP, unverified. */
+  cue_loops: Loop[];
   track_color: string | null;
   bpm_locked: boolean | null;
-  /** Entry types seen but not decoded (FLIP, or anything newer). */
+  /** Entry types seen but not decoded (anything newer). */
   unparsed_entry_types: string[];
 };
 
@@ -35,6 +37,7 @@ export type Markers2Result = { markers: Markers2; problems: MarkersProblem[] };
 const emptyMarkers = (): Markers2 => ({
   cues: [],
   loops: [],
+  cue_loops: [],
   track_color: null,
   bpm_locked: null,
   unparsed_entry_types: [],
@@ -115,8 +118,9 @@ export function parseMarkers2(payload: Uint8Array): Markers2Result {
         color: hex(d, 7),
         name: cString(d, 12),
       });
-    } else if (type === "LOOP" && d.length >= 19) {
-      markers.loops.push({
+    } else if ((type === "LOOP" || type === "CUELOOP") && d.length >= 19) {
+      // CUELOOP layout assumed same as LOOP, unverified.
+      (type === "LOOP" ? markers.loops : markers.cue_loops).push({
         index: d[1] as number,
         start_ms: d.readUInt32BE(2),
         end_ms: d.readUInt32BE(6),

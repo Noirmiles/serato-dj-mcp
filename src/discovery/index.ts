@@ -9,7 +9,7 @@ import { expandHome } from "../paths.js";
 export type LibraryInfo = {
   path: string;
   uuid: string;
-  version: "4.x" | "3.x";
+  version: "4.x" | "5.x" | "3.x";
   schema: number | null;
   status: "ok" | "unreadable";
   error?: string;
@@ -112,7 +112,13 @@ export function detectLibrary(dir: string): LibraryInfo | null {
     try {
       db = new DatabaseSync(master, { readOnly: true });
       const uv = (db.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
-      return { path: dir, uuid: libraryId(dir), version: "4.x", schema: uv, status: "ok" };
+      return {
+        path: dir,
+        uuid: libraryId(dir),
+        version: uv >= 203 ? "5.x" : "4.x",
+        schema: uv,
+        status: "ok",
+      };
     } catch (e) {
       return {
         path: dir,
@@ -212,7 +218,7 @@ export function resolveLibrary(opts: {
   const found = discover(opts);
   if (isSeratoError(found)) return found;
 
-  const lib = found.find((l) => l.version === "4.x" && l.status === "ok");
+  const lib = found.find((l) => (l.version === "4.x" || l.version === "5.x") && l.status === "ok");
   if (lib) return { ...lib, masterPath: join(lib.path, "master.sqlite") };
 
   const candidates = found.map((l) => ({ path: l.path, version: l.version, status: l.status }));
@@ -221,12 +227,12 @@ export function resolveLibrary(opts: {
   // the detected version, not a code that reads as "look elsewhere" and
   // invites a retry against the same path.
   if (detected3x) {
-    return err("unsupported_version", "found a Serato 3.x library; only 4.x is supported", {
+    return err("unsupported_version", "found a Serato 3.x library; only 4.x or 5.x is supported", {
       detected_version: detected3x.version,
       candidates,
     });
   }
-  return err("library_not_found", "no readable Serato 4.x library found", {
+  return err("library_not_found", "no readable Serato 4.x or 5.x library found", {
     searched: searchLocations(opts),
     candidates,
   });

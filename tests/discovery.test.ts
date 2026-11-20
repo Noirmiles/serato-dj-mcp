@@ -27,6 +27,15 @@ describe("discovery", () => {
     expect(lib?.uuid).toMatch(/^[0-9a-f]{12}$/);
   });
 
+  it("labels user_version 203 as 5.x and selects it", () => {
+    const dir = tmp();
+    makeMasterFixture(dir, { tracks: [], userVersion: 203 });
+    expect(detectLibrary(dir)?.version).toBe("5.x");
+    const r = resolveLibrary({ library: dir });
+    if (isSeratoError(r)) throw new Error("unexpected error");
+    expect(r.version).toBe("5.x");
+  });
+
   // 3.x keeps a binary "database V2" in ~/Music/_Serato_ and no SQLite at
   // all. It is a different product for an integrator, so it is detected and
   // refused rather than half-supported.

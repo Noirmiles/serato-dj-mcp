@@ -5,7 +5,7 @@ import { parseToolArgs } from "../args.js";
 import { discover, type LibraryInfo } from "../discovery/index.js";
 import { ok, type Warning, warningSchema } from "../envelope.js";
 import { isSeratoError, type SeratoError } from "../errors.js";
-import { volumeRootFromDatabaseUri } from "../paths.js";
+import { isNonVolumeStoreUri, volumeRootFromDatabaseUri } from "../paths.js";
 import { introspect } from "../schema/index.js";
 
 export const listLibrariesInput = z.object({});
@@ -24,7 +24,7 @@ export type LibraryEntry = LibraryInfo & {
 const libraryEntrySchema = z.object({
   path: z.string(),
   uuid: z.string(),
-  version: z.enum(["4.x", "3.x"]),
+  version: z.enum(["4.x", "5.x", "3.x"]),
   schema: z.number().nullable(),
   status: z.enum(["ok", "unreadable"]),
   error: z.string().optional(),
@@ -69,13 +69,15 @@ function locationsOf(dir: string): LocationsResult {
     }[];
     return {
       failed: false,
-      locations: rows.map((r) => {
-        try {
-          return { uri: r.database_uri, volumeRoot: volumeRootFromDatabaseUri(r.database_uri) };
-        } catch {
-          return { uri: r.database_uri, volumeRoot: "" };
-        }
-      }),
+      locations: rows
+        .filter((r) => !isNonVolumeStoreUri(r.database_uri))
+        .map((r) => {
+          try {
+            return { uri: r.database_uri, volumeRoot: volumeRootFromDatabaseUri(r.database_uri) };
+          } catch {
+            return { uri: r.database_uri, volumeRoot: "" };
+          }
+        }),
     };
   } catch (e) {
     return { locations: [], failed: true, error: e instanceof Error ? e.message : String(e) };
@@ -110,7 +112,7 @@ export function listLibraries(
     // trustworthy count to report, and 0 would be indistinguishable from a
     // genuinely empty 4.x library.
     let trackCount: number | null = null;
-    if (lib.version === "4.x" && lib.status === "ok") {
+    if (lib.version !== "3.x" && lib.status === "ok") {
       // Same lazy-open, finally-close idiom as locationsOf() above: introspect()
       // can throw (a future schema it cannot parse, say) after the handle is
       // already live, and closing only on the success path would leak it.
@@ -134,7 +136,7 @@ export function listLibraries(
         db?.close();
       }
     }
-    if (lib.version !== "4.x") return { ...lib, locations: [], track_count: null };
+    if (lib.version === "3.x") return { ...lib, locations: [], track_count: null };
 
     const { locations, failed, error } = locationsOf(lib.path);
     if (failed) {
@@ -147,6 +149,6 @@ export function listLibraries(
     return { ...lib, locations, track_count: trackCount };
   });
 
-  const active = libraries.find((l) => l.version === "4.x" && l.status === "ok")?.uuid ?? null;
+  const active = libraries.find((l) => l.version !== "3.x" && l.status === "ok")?.uuid ?? null;
   return ok({ libraries, active }, undefined, warnings);
 }
