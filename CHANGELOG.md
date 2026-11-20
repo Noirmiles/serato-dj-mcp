@@ -73,12 +73,29 @@ been run against a Serato installation on Windows, and the README's
   and writes nothing. Tested only against generated files, not files Serato wrote; it fails
   closed on anything it does not recognise, under the new error code `malformed_file`.
 - CI runs lint and the test suite on `windows-latest` as well.
+- Serato 5 libraries (schema `user_version` 203) are read: the version is known, so it no longer
+  gets a `schema_unknown` warning. Serato 4 (202) is unchanged.
+- `get_track_markers` decodes Markers2 `CUELOOP` entries into a new `cue_loops` list (index,
+  start_ms, end_ms, locked, name), the same shape as `loops`. The layout is assumed to match `LOOP`;
+  not yet verified on Serato 5 files.
 
 ### Changed
 
 - `permission_denied` carries instructions for the platform it happened on; on Windows it no
   longer says to grant Full Disk Access.
 - Text files check out with LF line endings on every platform (`.gitattributes`).
+- `list_libraries` and discovery label a library `5.x` when its schema is 203 or later, and `4.x`
+  otherwise. The server accepts either.
+- Master `connection` rows for Serato 5's `spotify.sqlite` and `remote_libraries.sqlite` are
+  recognised as non-volume stores and skipped.
+- `apply_changes` refuses on Serato 5 libraries (`user_version` >= 203) with `write_refused`, reason
+  `serato5_unmapped_crate`. Serato 5 needs a `master.sqlite` `location_container` mapping for every
+  crate in `root.sqlite` and disconnects the library ("Failed to determine an external container's
+  corresponding entry in the master database") when one is missing. This server does not write
+  `master.sqlite` yet. `stage_crate` warns about this (warning code `apply_unsupported_serato5`) and
+  still stages the crate. Serato 4 apply is unchanged.
+- BPM is read from the database only. Serato 5's new "Serato Tempo Map" tag does not affect this
+  server.
 
 ### Fixed
 
@@ -100,6 +117,8 @@ been run against a Serato installation on Windows, and the README's
   are assumed, and the code and tests say where.
 - The Claude Desktop extension on Windows, which is still built for macOS only, and every MCP
   client on Windows other than the test client.
+- Serato 5 (DJ Pro 5.0): reading a real Serato 5 library, and the `CUELOOP` layout in
+  `Serato Markers2`.
 
 ## [0.1.1] - 2026-09-25
 

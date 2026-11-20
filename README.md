@@ -139,7 +139,7 @@ requests and has no telemetry.
 
 | | |
 |---|---|
-| **Serato DJ 4.x** | Supported. Developed and tested against Serato DJ Lite 4.0.9 (library schema 202). Other 4.x schema versions are read with a `schema_unknown` warning. Serato DJ Pro 4.x is expected to use the same library format but has not been tested. |
+| **Serato DJ 4.x and DJ Pro 5.x** | Supported for reading and searching. 4.x was developed and tested against Serato DJ Lite 4.0.9 (library schema 202). Other 4.x schema versions are read with a `schema_unknown` warning. DJ Pro 5.x (schema 203) is read, but has not been tested against a real library. Serato DJ Pro 4.x is expected to use the same library format but has not been tested. |
 | **Serato DJ 3.x** | Detected and reported, not read (it keeps a binary `database V2` instead of SQLite). |
 | **macOS** | Supported. This is where the project is developed, and CI runs on it. |
 | **Windows** | Experimental: verified on generated libraries only, never with Serato. See [Windows](#windows) below. |
@@ -329,7 +329,7 @@ the flag wins. `SERATO_DJ_EXE` is the full path of `Serato DJ Pro.exe` for `sera
 Writes need `--allow-writes` and happen in two steps, because Serato must be closed while its
 database is written and the model usually works while it is open. `stage_crate` can run at any
 time; `apply_changes` refuses while Serato is running. Start Serato afterwards and the new crates
-appear within a few seconds.
+appear within a few seconds. On a Serato 5 library (schema 203 or later), writing crates is currently refused (`write_refused`, reason `serato5_unmapped_crate`), because Serato 5 needs a `master.sqlite` entry for each crate and this server does not write one yet.
 
 What a write does: it creates new crates at the top level of the Serato Library, in
 `root.sqlite`, or appends tracks to the end of an existing top-level crate there, and nothing
