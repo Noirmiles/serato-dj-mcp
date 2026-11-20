@@ -3,7 +3,14 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import { z } from "zod";
 import { acquireWriteLock } from "../apply/mutex.js";
-import { existingCrateId, findAnchors, resolveSpaceAssets, rootGeneration } from "../apply/root.js";
+import {
+  existingCrateId,
+  findAnchors,
+  isSerato5Version,
+  resolveSpaceAssets,
+  rootGeneration,
+  rootUserVersion,
+} from "../apply/root.js";
 import { isSqliteBusy } from "../apply/sqlite.js";
 import { parseToolArgs } from "../args.js";
 import { ok, type Warning, warningSchema } from "../envelope.js";
@@ -95,6 +102,7 @@ function readRoot(
       existingName: string | null;
       rootGen: string;
       memberPortableIds: Set<string>;
+      serato5: boolean;
     } {
   let root: DatabaseSync | undefined;
   try {
@@ -148,7 +156,13 @@ function readRoot(
         .all(conflict) as { portable_id: string }[];
       for (const r of rows) memberPortableIds.add(r.portable_id.toLowerCase());
     }
-    return { conflict, existingName, rootGen, memberPortableIds };
+    return {
+      conflict,
+      existingName,
+      rootGen,
+      memberPortableIds,
+      serato5: isSerato5Version(rootUserVersion(root)),
+    };
   } catch (e) {
     // root.sqlite is live and Serato may hold it open. SQLITE_BUSY means
     // exactly that and is worth a retry; anything else -- a damaged file, an
@@ -176,6 +190,7 @@ type ResolvedTracks = {
   existingName: string | null;
   rootGen: string;
   memberPortableIds: Set<string>;
+  serato5: boolean;
 };
 
 /**
@@ -265,6 +280,13 @@ export function resolveStageTracks(
         requested_generation: requestedGeneration,
         generation: handle.snapshot.generation,
       },
+    });
+  }
+  if (rootRead.serato5) {
+    warnings.push({
+      code: "apply_unsupported_serato5",
+      message:
+        "this is a Serato DJ Pro 5 library: the crate is staged and kept, but apply_changes will refuse until master.sqlite mapping is supported",
     });
   }
   return { ids, byId, ...rootRead };
