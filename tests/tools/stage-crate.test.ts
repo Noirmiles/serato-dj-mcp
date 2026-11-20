@@ -67,6 +67,21 @@ describe("stage_crate", () => {
     ]);
   });
 
+  it.each([
+    [203, true],
+    [202, false],
+  ])(
+    "user_version %i: apply_unsupported_serato5 warning is %s, crate staged",
+    async (userVersion, warned) => {
+      const { ctx } = library({ userVersion });
+      const ids = await idsByTitle(ctx);
+      const r = await stageCrate({ name: "Gigs", track_ids: [ids.get("Rain")] }, ctx);
+      if (isSeratoError(r)) throw new Error(`unexpected error: ${r.error.message}`);
+      expect(r.warnings?.some((w) => w.code === "apply_unsupported_serato5") ?? false).toBe(warned);
+      expect((loadStage(ctx.stateDir, r.library_id) as Stage).crates).toHaveLength(1);
+    },
+  );
+
   it("does not touch root.sqlite -- staging only reads", async () => {
     const { ctx, rootPath } = library();
     const before = sha(rootPath);

@@ -42,9 +42,8 @@ export function checkRootSchema(root: DatabaseSync): null | SeratoError {
       },
     );
   }
-  const userVersion = (root.prepare("PRAGMA user_version").get() as { user_version: number })
-    .user_version;
-  if (userVersion >= 203) {
+  const userVersion = rootUserVersion(root);
+  if (isSerato5Version(userVersion)) {
     return refuse(
       "serato5_unmapped_crate",
       "Serato DJ Pro 5 (schema 203+) needs a master.sqlite mapping for every new crate; this server does not write master.sqlite yet, so apply is refused to keep Serato from disconnecting the library",
@@ -53,6 +52,12 @@ export function checkRootSchema(root: DatabaseSync): null | SeratoError {
   }
   return null;
 }
+
+export const rootUserVersion = (root: DatabaseSync): number =>
+  (root.prepare("PRAGMA user_version").get() as { user_version: number }).user_version;
+
+/** Serato DJ Pro 5 schema: apply refuses it until master.sqlite mapping exists. */
+export const isSerato5Version = (userVersion: number): boolean => userVersion >= 203;
 
 /**
  * Both queries mirror how Serato itself resolves them. The space by name
