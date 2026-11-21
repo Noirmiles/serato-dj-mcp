@@ -18,6 +18,7 @@ import {
   markers2Payload,
   mp3File,
 } from "../markers/build.js";
+import { tempoMapV2 } from "../markers/grid-build.js";
 import { FakePlatform } from "./fake.js";
 import { line, shot } from "./ocr-lines.js";
 
@@ -246,6 +247,46 @@ describe("serato_analyze execution", () => {
     if (isSeratoError(r)) throw new Error(r.error.message);
     expect(r).toMatchObject({ executed: true, finished: "all_changed", timed_out: false });
     expect(r.results?.map((x) => x.changed)).toEqual([true, true]);
+  });
+
+  it("reports the final grid when the tag changes twice", async () => {
+    const f = running();
+    const w = world(2);
+    const file = w.files[0] as string;
+    const tagged = (n: number) =>
+      mp3File(
+        id3Tag([
+          id3Frame(
+            "GEOB",
+            geobFrameData(
+              tempoMapV2(
+                Array.from({ length: n }, (_, k) => ({
+                  pos: BigInt(k * 100),
+                  tempo: 120 + k,
+                  note: 4,
+                  interp: 1,
+                })),
+              ),
+              "Serato Tempo Map",
+            ),
+            3,
+          ),
+        ]),
+      );
+    let polls = -1; // counts sleeps once Analyze is clicked
+    f.onClick = (_fk, _x, y) => {
+      if (y < ANALYZE_Y) return;
+      writeFileSync(file, tagged(1)); // partial
+      polls = 0;
+    };
+    const sleep = f.sleep;
+    (f as { sleep: unknown }).sleep = async (ms: number) => {
+      await sleep(ms);
+      if (polls >= 0 && ++polls === 2) writeFileSync(file, tagged(3)); // final
+    };
+    const r = await exec(f, w);
+    if (isSeratoError(r)) throw new Error(r.error.message);
+    expect(r.results?.[0]).toMatchObject({ changed: true, after: { marker_count: 3 } });
   });
 
   it("goes quiet after some files changed", async () => {
