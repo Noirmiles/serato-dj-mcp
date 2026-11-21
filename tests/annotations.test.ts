@@ -61,6 +61,12 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Get a track's cues, loops and colour",
   },
+  serato_read_grid: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Read beat grids from audio file tags",
+  },
   audit_library: {
     readOnly: true,
     destructive: false,

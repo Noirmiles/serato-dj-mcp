@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseControlArgs, runControlCli } from "../src/control-cli.js";
 import { FakePlatform } from "./control/fake.js";
@@ -42,6 +45,31 @@ describe("parseControlArgs", () => {
     ]) {
       expect(parseControlArgs(argv), argv.join(" ")).toHaveProperty("usage");
     }
+  });
+});
+
+describe("read-grid", () => {
+  it("needs a path", () => {
+    expect(parseControlArgs(["read-grid"])).toHaveProperty("usage");
+    expect(parseControlArgs(["read-grid", "a", "b"])).toEqual({
+      command: "read-grid",
+      paths: ["a", "b"],
+    });
+  });
+
+  it("reads tags on any platform without touching Serato", async () => {
+    const f = FakePlatform.running();
+    const p = join(mkdtempSync(join(tmpdir(), "serato-rg-")), "x.bin");
+    writeFileSync(p, Buffer.alloc(16));
+    const r = await run(["read-grid", p, "missing.mp3"], f, "linux");
+    expect(r.exitCode).toBe(0);
+    expect(r.line).not.toContain("\n");
+    const j = JSON.parse(r.line);
+    expect(j.ok).toBe(true);
+    expect(
+      j.result.files.map((x: { tempo_map: { status: string } }) => x.tempo_map.status),
+    ).toEqual(["unsupported_format", "file_missing"]);
+    expect(f.calls).toEqual([]);
   });
 });
 

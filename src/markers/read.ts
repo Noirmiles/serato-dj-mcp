@@ -25,8 +25,23 @@ export type MarkersReadResult = {
   parsed?: Markers2Result;
 };
 
-const GEOB_NAME = "Serato Markers2";
-const FLAC_KEY = "SERATO_MARKERS_V2";
+/** Which Serato tag to find: its GEOB description and its FLAC Vorbis key. */
+export type TagSpec = { geob: string; flacKey: string; bareMarkers2?: boolean };
+const MARKERS2: TagSpec = {
+  geob: "Serato Markers2",
+  flacKey: "SERATO_MARKERS_V2",
+  bareMarkers2: true,
+};
+export const TEMPO_MAP_TAG: TagSpec = { geob: "Serato Tempo Map", flacKey: "SERATO_TEMPO_MAP" };
+export const BEATGRID_TAG: TagSpec = { geob: "Serato BeatGrid", flacKey: "SERATO_BEATGRID" };
+
+export type TagReadResult = {
+  status: MarkersReadStatus;
+  format: "mp3" | "aiff" | "flac" | null;
+  message?: string;
+  /** The tag's raw bytes (FLAC: base64-decoded), when status is "ok". */
+  payload?: Buffer;
+};
 
 class Reader {
   constructor(
@@ -73,8 +88,8 @@ function findTerminator(b: Buffer, from: number, encoding: number): number {
   return b.indexOf(0, from);
 }
 
-/** The data of the GEOB frame called Serato Markers2, or null. */
-function geobPayload(frame: Buffer): Buffer | null {
+/** The data of the GEOB frame whose description is spec.geob, or null. */
+function geobPayload(frame: Buffer, spec: TagSpec): Buffer | null {
   if (frame.length < 1) return null;
   const enc = frame[0] as number;
   const wide = enc === 1 || enc === 2;
@@ -87,13 +102,13 @@ function geobPayload(frame: Buffer): Buffer | null {
   if (descEnd < 0) return null;
   const raw = frame.subarray(descStart, descEnd);
   const desc = wide ? raw.toString("utf16le") : raw.toString("latin1");
-  if (desc.replace(/^﻿/, "") !== GEOB_NAME) return null;
+  if (desc.replace(/^﻿/, "") !== spec.geob) return null;
   return frame.subarray(descEnd + (wide ? 2 : 1));
 }
 
 type Found = { payload: Buffer } | { malformed: string } | null;
 
-function findInId3(tag: Buffer, major: number, flags: number): Found {
+function findInId3(tag: Buffer, major: number, flags: number, spec: TagSpec): Found {
   let body = tag;
   if (flags & 0x80 && major === 3) body = unsync(body);
   let pos = 0;
@@ -122,13 +137,13 @@ function findInId3(tag: Buffer, major: number, flags: number): Found {
       if (fflags & 0x0001) data = data.subarray(4);
       if (fflags & 0x0002) data = unsync(data);
     }
-    const payload = geobPayload(data);
+    const payload = geobPayload(data, spec);
     if (payload) return { payload };
   }
   return null;
 }
 
-function readId3At(r: Reader, offset: number): Found {
+function readId3At(r: Reader, offset: number, spec: TagSpec): Found {
   const head = r.at(offset, 10);
   if (head === null || head.toString("latin1", 0, 3) !== "ID3") return null;
   const major = head[3] as number;
@@ -137,34 +152,34 @@ function readId3At(r: Reader, offset: number): Found {
   if (size > MAX_TAG_BYTES) return { malformed: "ID3 tag is implausibly large" };
   const tag = r.at(offset + 10, size);
   if (!tag) return { malformed: "ID3 tag is truncated" };
-  return findInId3(tag, major, head[5] as number);
+  return findInId3(tag, major, head[5] as number, spec);
 }
 
-function findInAiff(r: Reader): Found {
+function findInAiff(r: Reader, spec: TagSpec): Found {
   let pos = 12;
   while (pos + 8 <= r.size) {
     const head = r.at(pos, 8) as Buffer;
     const id = head.toString("latin1", 0, 4);
     const size = head.readUInt32BE(4);
-    if (id === "ID3 " || id === "id3 ") return readId3At(r, pos + 8);
+    if (id === "ID3 " || id === "id3 ") return readId3At(r, pos + 8, spec);
     pos += 8 + size + (size & 1);
   }
   return null;
 }
 
-function decodeFlacValue(value: string): Found {
+function decodeFlacValue(value: string, spec: TagSpec): Found {
   const decoded = decodeBase64Strict(Buffer.from(value, "latin1"));
-  if (decoded === null) return { malformed: "SERATO_MARKERS_V2 is not valid base64" };
+  if (decoded === null) return { malformed: `${spec.flacKey} is not valid base64` };
   // GEOB-style content: mime, NUL, tag name, NUL, payload. Tolerate a bare
   // payload (starting 01 01) in case a writer omits the prefix.
-  if (decoded[0] === 1 && decoded[1] === 1) return { payload: decoded };
+  if (spec.bareMarkers2 && decoded[0] === 1 && decoded[1] === 1) return { payload: decoded };
   const mimeEnd = decoded.indexOf(0);
   const nameEnd = mimeEnd < 0 ? -1 : decoded.indexOf(0, mimeEnd + 1);
-  if (nameEnd < 0) return { malformed: "SERATO_MARKERS_V2 has no GEOB-style prefix" };
+  if (nameEnd < 0) return { malformed: `${spec.flacKey} has no GEOB-style prefix` };
   return { payload: decoded.subarray(nameEnd + 1) };
 }
 
-function findInVorbis(b: Buffer): Found {
+function findInVorbis(b: Buffer, spec: TagSpec): Found {
   const bad = { malformed: "Vorbis comment block is malformed" };
   if (b.length < 8) return bad;
   let pos = 4 + b.readUInt32LE(0);
@@ -179,14 +194,14 @@ function findInVorbis(b: Buffer): Found {
     const s = b.toString("utf8", pos, pos + n);
     pos += n;
     const eq = s.indexOf("=");
-    if (eq > 0 && s.slice(0, eq).toUpperCase() === FLAC_KEY) {
-      return decodeFlacValue(s.slice(eq + 1));
+    if (eq > 0 && s.slice(0, eq).toUpperCase() === spec.flacKey) {
+      return decodeFlacValue(s.slice(eq + 1), spec);
     }
   }
   return null;
 }
 
-function findInFlac(r: Reader): Found {
+function findInFlac(r: Reader, spec: TagSpec): Found {
   let pos = 4;
   for (;;) {
     const head = r.at(pos, 4);
@@ -197,14 +212,14 @@ function findInFlac(r: Reader): Found {
     if (type === 4) {
       const b = r.at(pos + 4, len);
       if (!b) return { malformed: "Vorbis comment block is truncated" };
-      return findInVorbis(b);
+      return findInVorbis(b, spec);
     }
     if (last) return null;
     pos += 4 + len;
   }
 }
 
-export function readMarkersFromFile(path: string): MarkersReadResult {
+export function readTagFromFile(path: string, spec: TagSpec): TagReadResult {
   let fd: number;
   try {
     fd = openSync(path, "r");
@@ -226,17 +241,17 @@ export function readMarkersFromFile(path: string): MarkersReadResult {
     let found: Found;
     if (magic.startsWith("ID3")) {
       format = "mp3";
-      found = readId3At(r, 0);
+      found = readId3At(r, 0, spec);
     } else if (magic === "fLaC") {
       format = "flac";
-      found = findInFlac(r);
+      found = findInFlac(r, spec);
     } else if (magic === "FORM") {
       const kind = r.at(8, 4)?.toString("latin1");
       if (kind !== "AIFF" && kind !== "AIFC") {
         return { status: "unsupported_format", format: null, message: "not an AIFF file" };
       }
       format = "aiff";
-      found = findInAiff(r);
+      found = findInAiff(r, spec);
     } else {
       return {
         status: "unsupported_format",
@@ -245,13 +260,18 @@ export function readMarkersFromFile(path: string): MarkersReadResult {
       };
     }
     if (found === null) {
-      return { status: "no_tag", format, message: "no Serato Markers2 tag in this file" };
+      return { status: "no_tag", format, message: `no ${spec.geob} tag in this file` };
     }
     if ("malformed" in found) return { status: "malformed", format, message: found.malformed };
-    return { status: "ok", format, parsed: parseMarkers2(found.payload) };
+    return { status: "ok", format, payload: found.payload };
   } catch (e) {
     return { status: "unreadable", format: null, message: `read failed: ${(e as Error).message}` };
   } finally {
     closeSync(fd);
   }
+}
+
+export function readMarkersFromFile(path: string): MarkersReadResult {
+  const { payload, ...rest } = readTagFromFile(path, MARKERS2);
+  return payload ? { ...rest, parsed: parseMarkers2(payload) } : rest;
 }

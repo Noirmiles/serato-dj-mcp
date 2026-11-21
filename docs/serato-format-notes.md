@@ -295,6 +295,27 @@ prose says little-endian; the examples are the better evidence. published by Hol
   track colour and BPM lock from these tags, and not the overview or Flip. published by
   Mixxx-meta and the Mixxx 2.3 announcement.
 
+### Serato DJ Pro 5 `Serato Tempo Map` (reverse-engineered)
+
+Read by `serato_read_grid` (`src/markers/tempo-map.ts`). Origin: reverse engineering of Serato DJ
+Pro 5 by the project's author; **not** from a published spec and not yet checked against many
+real files. All numbers are big-endian. FLAC carries it as base64 in `SERATO_TEMPO_MAP`, the
+legacy grid in `SERATO_BEATGRID`, like Markers2. Serato 5 uses a valid Tempo Map and otherwise
+converts the legacy `Serato BeatGrid`.
+
+- **V2** (what Serato 5 writes): `u8` version `02`; `u16` header field (meaning unknown, reported
+  raw); `u8` mode (0..3, meaning unknown, reported raw); `f64` origin (seconds of the first
+  marker); `u32` marker count; then per marker `i64` position (unit unknown; the first must be
+  0), `f64` tempo (> 0), `f64` beat note value (> 0), `u8` interpolation (1 stepped, 2 linear,
+  3 curved; other values kept raw), `f64` curvature (|c| <= 1).
+- **V1**: `u8` `01`; `u32` count; per marker `f64` time, `i64` position, `f64` tempo, `f64` beat
+  note value, `u8` interpolation (no curvature). The reader rebases positions so the first is 0
+  and takes the origin from the first marker's time.
+- **Legacy BeatGrid** (as above): `01 00`, `u32` count N, N-1 markers of `f32` seconds + `u32`
+  beats to the next marker, a terminal marker of `f32` seconds + `f32` BPM, and at most one
+  footer byte (present or absent both accepted; any other length is malformed).
+- A marker count that does not match the bytes left is malformed. Unknown versions are rejected.
+
 ## 5. History
 
 ### Serato 4.x

@@ -111,6 +111,7 @@ describe("server", () => {
       "list_libraries",
       "search_tracks",
       "serato_inspect",
+      "serato_read_grid",
     ]);
   });
 
@@ -128,6 +129,7 @@ describe("server", () => {
       "run_sql",
       "search_tracks",
       "serato_inspect",
+      "serato_read_grid",
     ]);
   });
 
@@ -144,6 +146,7 @@ describe("server", () => {
       "list_libraries",
       "search_tracks",
       "serato_inspect",
+      "serato_read_grid",
     ]);
 
     const s = createServer(cli({ allowWrites: true }));
@@ -159,6 +162,7 @@ describe("server", () => {
       "preview_changes",
       "search_tracks",
       "serato_inspect",
+      "serato_read_grid",
       "stage_add_to_crate",
       "stage_crate",
     ]);

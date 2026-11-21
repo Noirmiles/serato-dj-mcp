@@ -13,6 +13,9 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `serato_read_grid` (read-only) and `control-cli read-grid <path>...`: read the Serato DJ Pro 5
+  `Serato Tempo Map` and legacy `Serato BeatGrid` tags from MP3/AIFF/FLAC files, and report which
+  Serato 5 would use. Formats are reverse-engineered and tested on synthetic files only.
 - `dist/control-cli.js` (Windows only): `node dist/control-cli.js <status|close|open|rescan> [--timeout-seconds N]`
   runs the `serato_*` logic directly, without MCP, and prints one JSON line (`{"ok":true,"result":...}` or
   `{"ok":false,"error":{...}}`); exit code 0 ok, 1 failure, 2 bad usage. See docs/serato-control.md.

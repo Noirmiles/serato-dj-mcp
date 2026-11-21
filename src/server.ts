@@ -64,6 +64,12 @@ import {
   previewChangesInput,
   previewChangesOutput,
 } from "./tools/preview-changes.js";
+import {
+  readGridDescription,
+  readGridInput,
+  readGridOutput,
+  readGridTool,
+} from "./tools/read-grid.js";
 import { runSql, runSqlDescription, runSqlInput, runSqlOutput } from "./tools/run-sql.js";
 import {
   searchTracks,
@@ -307,6 +313,16 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
             cacheDir: cli.cacheDir,
           }),
         ),
+    },
+    {
+      descriptor: describeTool(
+        "serato_read_grid",
+        "Read beat grids from audio file tags",
+        readGridDescription,
+        readGridInput,
+        readGridOutput,
+      ),
+      call: async (raw) => toCallToolResult(readGridTool(raw)),
     },
     {
       descriptor: describeTool(
