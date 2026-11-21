@@ -438,6 +438,12 @@ export async function seratoAnalyze(
         break;
       }
     }
+    // Serato may touch a file before its tags are complete: take the final state of every file.
+    before.forEach((b, i) => {
+      const g = readGrid(b.path);
+      if (mtime(b.path) !== b.mtime || sig(g) !== b.sig) changed[i] = true;
+      latest[i] = g;
+    });
     return ok(
       {
         executed: true,

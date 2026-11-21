@@ -206,7 +206,8 @@ describe("createSystemProbe", () => {
   });
 });
 
-describe("systemProbe", () => {
+describe("systemProbe", { timeout: 30_000 }, () => {
+  // These spawn the real tasklist (up to 5 s each); the default 5 s test timeout is too tight under load.
   // EPERM from kill(pid, 0) means a live process owned by another user, not
   // a dead one. The current process is the one pid certain to be alive and
   // nameable in every environment.
