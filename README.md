@@ -112,7 +112,7 @@ Add options after `serato-dj-mcp` in `args`, for example
   as forward slashes.
 - `--allow-writes` — crate writing, see below.
 - `--allow-raw-sql` — adds `run_sql`, read-only SQL for developers.
-- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open` and `serato_rescan`,
+- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open`, `serato_rescan` and `serato_analyze`,
   see [Controlling Serato (Windows)](#controlling-serato-windows).
 
 All options are listed under [Options](#options).
@@ -244,6 +244,9 @@ exist cannot be called by mistake:
   the older `Serato Markers_` tag, which Serato prefers when both exist, is not read. Tested on
   synthetic byte fixtures only, written from the published format notes: not yet compared with
   files written by Serato itself.
+- `serato_read_grid` — the beat grid Serato stored in audio files: the Serato DJ Pro 5 `Serato Tempo
+  Map` tag and the older `Serato BeatGrid` tag, with which one Serato 5 uses. Read-only; takes a list
+  of file paths. Also on the command line: `node dist/control-cli.js read-grid <path>...`.
 - `run_sql` — one read-only `SELECT` against a snapshot copy. Registered only
   with `--allow-raw-sql`, because it returns raw rows with no path redaction.
 
@@ -267,6 +270,11 @@ With `--allow-serato-control`, on Windows only:
 - `serato_close` — gracefully close Serato (needs `confirm: true`), see below.
 - `serato_open` — start Serato and wait until its window is ready.
 - `serato_rescan` — press Serato's Re-Scan File Info button (whole library), see below.
+- `serato_analyze` — have Serato DJ Pro 5 analyse (Lucid Beatgrids) one named crate, in two steps
+  (plan, then confirm with a token), and wait until the files' tags change. A loose `files` list
+  returns `not_supported` (use a crate), and verifying the analysis mode usually needs
+  `set_mode: true`. Not live-tested; see
+  [docs/serato-control.md](docs/serato-control.md#analysing-a-crate-serato_analyze).
 
 ## Controlling Serato (Windows)
 

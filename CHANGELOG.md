@@ -13,6 +13,16 @@ been run against a Serato installation on Windows, and the README's
 
 ### Added
 
+- `serato_analyze` (with `--allow-serato-control`, Windows only) and `control-cli analyze`: have Serato
+  DJ Pro 5 analyse (Lucid Beatgrids) the files of one named crate in a chosen mode (fixed, or flexible
+  with bars/beats) and wait until the files' tags change. Two steps: a call without `confirm` returns a
+  plan and a `confirm_token`; the confirming call must send both. Refuses the whole library, audio
+  playing, missing files and a Setup mode mismatch; more than 50 files or beatgrid-locked files only run
+  when confirmed. Loose file lists return `not_supported`. Built on OCR and mouse clicks and **not run
+  against a real Serato 5**; see docs/serato-control.md.
+- `serato_read_grid` (read-only) and `control-cli read-grid <path>...`: read the Serato DJ Pro 5
+  `Serato Tempo Map` and legacy `Serato BeatGrid` tags from MP3/AIFF/FLAC files, and report which
+  Serato 5 would use. Formats are reverse-engineered and tested on synthetic files only.
 - `dist/control-cli.js` (Windows only): `node dist/control-cli.js <status|close|open|rescan> [--timeout-seconds N]`
   runs the `serato_*` logic directly, without MCP, and prints one JSON line (`{"ok":true,"result":...}` or
   `{"ok":false,"error":{...}}`); exit code 0 ok, 1 failure, 2 bad usage. See docs/serato-control.md.

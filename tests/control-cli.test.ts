@@ -1,3 +1,6 @@
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { parseControlArgs, runControlCli } from "../src/control-cli.js";
 import { FakePlatform } from "./control/fake.js";
@@ -42,6 +45,102 @@ describe("parseControlArgs", () => {
     ]) {
       expect(parseControlArgs(argv), argv.join(" ")).toHaveProperty("usage");
     }
+  });
+});
+
+describe("read-grid", () => {
+  it("needs a path", () => {
+    expect(parseControlArgs(["read-grid"])).toHaveProperty("usage");
+    expect(parseControlArgs(["read-grid", "a", "b"])).toEqual({
+      command: "read-grid",
+      paths: ["a", "b"],
+    });
+  });
+
+  it("reads tags on any platform without touching Serato", async () => {
+    const f = FakePlatform.running();
+    const p = join(mkdtempSync(join(tmpdir(), "serato-rg-")), "x.bin");
+    writeFileSync(p, Buffer.alloc(16));
+    const r = await run(["read-grid", p, "missing.mp3"], f, "linux");
+    expect(r.exitCode).toBe(0);
+    expect(r.line).not.toContain("\n");
+    const j = JSON.parse(r.line);
+    expect(j.ok).toBe(true);
+    expect(
+      j.result.files.map((x: { tempo_map: { status: string } }) => x.tempo_map.status),
+    ).toEqual(["unsupported_format", "file_missing"]);
+    expect(f.calls).toEqual([]);
+  });
+});
+
+describe("analyze", () => {
+  it("maps flags to the tool input", () => {
+    expect(
+      parseControlArgs([
+        "analyze",
+        "--crate",
+        "Gigs",
+        "--mode",
+        "flexible",
+        "--resolution",
+        "bars",
+        "--set-mode",
+        "--confirm",
+        "--token",
+        "abc",
+        "--timeout-seconds",
+        "90",
+      ]),
+    ).toEqual({
+      command: "analyze",
+      args: {
+        crate: "Gigs",
+        mode: "flexible",
+        resolution: "bars",
+        set_mode: true,
+        confirm: true,
+        confirm_token: "abc",
+        timeout_seconds: 90,
+      },
+    });
+    expect(parseControlArgs(["analyze", "--file", "a", "--file", "b", "--mode", "fixed"])).toEqual({
+      command: "analyze",
+      args: { files: ["a", "b"], mode: "fixed" },
+    });
+  });
+
+  it("rejects bad flags", () => {
+    for (const argv of [
+      ["analyze", "--crate"],
+      ["analyze", "--bogus"],
+      ["analyze", "--mode", "a", "--mode", "b"],
+      ["analyze", "--timeout-seconds", "x"],
+    ]) {
+      expect(parseControlArgs(argv), argv.join(" ")).toHaveProperty("usage");
+    }
+  });
+
+  it("not Windows: not_supported, exit 1, platform untouched", async () => {
+    const f = FakePlatform.running();
+    const r = await run(["analyze", "--crate", "G", "--mode", "fixed"], f, "linux");
+    expect(r.exitCode).toBe(1);
+    expect(JSON.parse(r.line).error.code).toBe("not_supported");
+    expect(f.calls).toEqual([]);
+  });
+
+  it("a tool refusal is one JSON line, exit 1", async () => {
+    const r = await run(["analyze", "--crate", "All Audio", "--mode", "fixed"]);
+    expect(r.exitCode).toBe(1);
+    expect(r.line).not.toContain("\n");
+    expect(JSON.parse(r.line)).toMatchObject({
+      ok: false,
+      error: { code: "whole_library_refused" },
+    });
+  });
+
+  it("loose --file lists are not_supported", async () => {
+    const r = await run(["analyze", "--file", "a.mp3", "--mode", "fixed"]);
+    expect(JSON.parse(r.line).error.code).toBe("not_supported");
   });
 });
 

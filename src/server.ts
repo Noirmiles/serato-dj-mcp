@@ -64,6 +64,12 @@ import {
   previewChangesInput,
   previewChangesOutput,
 } from "./tools/preview-changes.js";
+import {
+  readGridDescription,
+  readGridInput,
+  readGridOutput,
+  readGridTool,
+} from "./tools/read-grid.js";
 import { runSql, runSqlDescription, runSqlInput, runSqlOutput } from "./tools/run-sql.js";
 import {
   searchTracks,
@@ -71,6 +77,12 @@ import {
   searchTracksInput,
   searchTracksOutput,
 } from "./tools/search-tracks.js";
+import {
+  seratoAnalyze,
+  seratoAnalyzeDescription,
+  seratoAnalyzeInput,
+  seratoAnalyzeOutput,
+} from "./tools/serato-analyze.js";
 import {
   seratoClose,
   seratoCloseDescription,
@@ -310,6 +322,16 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
     },
     {
       descriptor: describeTool(
+        "serato_read_grid",
+        "Read beat grids from audio file tags",
+        readGridDescription,
+        readGridInput,
+        readGridOutput,
+      ),
+      call: async (raw) => toCallToolResult(readGridTool(raw)),
+    },
+    {
+      descriptor: describeTool(
         "get_crate_tracks",
         "Get the tracks of a crate",
         getCrateTracksDescription,
@@ -451,6 +473,7 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
   if (cli.allowSeratoControl && (options.hostPlatform ?? process.platform) === "win32") {
     const control = {
       platform: options.seratoPlatform ?? new WindowsSeratoPlatform({ libraryHint: cli.library }),
+      read: { library: cli.library, roots: cli.roots, cacheDir: cli.cacheDir },
     };
     entries.push(
       {
@@ -495,6 +518,17 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
           CONTROL,
         ),
         call: async (raw) => toCallToolResult(await seratoRescan(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_analyze",
+          "Analyse a crate's beatgrids in Serato DJ Pro 5",
+          seratoAnalyzeDescription,
+          seratoAnalyzeInput,
+          seratoAnalyzeOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoAnalyze(raw, control)),
       },
     );
   }

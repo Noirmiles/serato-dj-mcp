@@ -61,6 +61,12 @@ const EXPECTED: Record<
     idempotent: true,
     title: "Get a track's cues, loops and colour",
   },
+  serato_read_grid: {
+    readOnly: true,
+    destructive: false,
+    idempotent: true,
+    title: "Read beat grids from audio file tags",
+  },
   audit_library: {
     readOnly: true,
     destructive: false,
@@ -96,6 +102,12 @@ const EXPECTED: Record<
     destructive: false,
     idempotent: false,
     title: "Re-scan file info in Serato DJ Pro",
+  },
+  serato_analyze: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Analyse a crate's beatgrids in Serato DJ Pro 5",
   },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
