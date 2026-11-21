@@ -31,6 +31,14 @@ export const ERROR_CODES = {
   serato_not_running: "serato_not_running",
   serato_window_not_ready: "serato_window_not_ready",
   rescan_button_not_found: "rescan_button_not_found",
+  not_supported: "not_supported",
+  whole_library_refused: "whole_library_refused",
+  files_missing: "files_missing",
+  confirm_token_required: "confirm_token_required",
+  plan_changed: "plan_changed",
+  mode_mismatch: "mode_mismatch",
+  mode_unverifiable: "mode_unverifiable",
+  analyze_ui_not_found: "analyze_ui_not_found",
 } as const;
 
 export type ErrorCode = keyof typeof ERROR_CODES;

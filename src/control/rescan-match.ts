@@ -26,7 +26,7 @@ export function fold(s: string): string {
 
 const TARGETS = RESCAN_LABELS.map(fold);
 
-function levenshtein(a: string, b: string): number {
+export function levenshtein(a: string, b: string): number {
   let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
   for (let i = 1; i <= a.length; i++) {
     const cur = [i];
@@ -86,7 +86,7 @@ function union(words: OcrWord[]): Box {
 }
 
 /** The tightest run of 1 to 4 consecutive words in a line that reads as the button. */
-function findInLine(line: OcrLine, test: (text: string) => boolean): Box | null {
+export function findInLine(line: OcrLine, test: (text: string) => boolean): Box | null {
   const ws = line.words;
   let best: OcrWord[] | null = null;
   for (let i = 0; i < ws.length; i++) {

@@ -78,6 +78,12 @@ import {
   searchTracksOutput,
 } from "./tools/search-tracks.js";
 import {
+  seratoAnalyze,
+  seratoAnalyzeDescription,
+  seratoAnalyzeInput,
+  seratoAnalyzeOutput,
+} from "./tools/serato-analyze.js";
+import {
   seratoClose,
   seratoCloseDescription,
   seratoCloseInput,
@@ -467,6 +473,7 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
   if (cli.allowSeratoControl && (options.hostPlatform ?? process.platform) === "win32") {
     const control = {
       platform: options.seratoPlatform ?? new WindowsSeratoPlatform({ libraryHint: cli.library }),
+      read: { library: cli.library, roots: cli.roots, cacheDir: cli.cacheDir },
     };
     entries.push(
       {
@@ -511,6 +518,17 @@ export function createServer(cli: Cli, options: ServerOptions = {}): Server {
           CONTROL,
         ),
         call: async (raw) => toCallToolResult(await seratoRescan(raw, control)),
+      },
+      {
+        descriptor: describeTool(
+          "serato_analyze",
+          "Analyse a crate's beatgrids in Serato DJ Pro 5",
+          seratoAnalyzeDescription,
+          seratoAnalyzeInput,
+          seratoAnalyzeOutput,
+          CONTROL,
+        ),
+        call: async (raw) => toCallToolResult(await seratoAnalyze(raw, control)),
       },
     );
   }
