@@ -2,7 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import { resolveLibrary } from "../discovery/index.js";
 import type { Warning } from "../envelope.js";
 import { err, isSeratoError, type SeratoError } from "../errors.js";
-import { volumeRootFromDatabaseUri } from "../paths.js";
+import { isNonVolumeStoreUri, volumeRootFromDatabaseUri } from "../paths.js";
 import { introspect, type SchemaInfo } from "../schema/index.js";
 import { type Snapshot, takeSnapshot } from "../snapshot/index.js";
 
@@ -87,6 +87,7 @@ function volumeRoots(db: DatabaseSync, tables: Set<string>): Map<number, string>
     database_uri: string;
   }[];
   for (const row of rows) {
+    if (isNonVolumeStoreUri(row.database_uri)) continue;
     try {
       roots.set(row.location_id, volumeRootFromDatabaseUri(row.database_uri));
     } catch {

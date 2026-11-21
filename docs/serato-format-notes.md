@@ -283,6 +283,8 @@ prose says little-endian; the examples are the better evidence. published by Hol
     32-bit length and data: type 0 is a jump (two 64-bit floats, seconds), type 1 is a
     playback/censor span (three 64-bit floats, the third a speed, -1.0 meaning censor). The last
     sub-entry is always a jump. serato-tools keeps FLIP undecoded.
+  - `CUELOOP`: not in the published notes. This server decodes it into `cue_loops` assuming the
+    `LOOP` layout; not checked against Serato 5 files.
 - **Which wins.** Holzhaus-tags and triseratops both say Serato prefers `Serato Markers_` to
   `Serato Markers2` when both are present.
 - **Colours.** The track colour shown in the library differs from the stored value by a fixed

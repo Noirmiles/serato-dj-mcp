@@ -38,6 +38,7 @@ export const getTrackMarkersOutput = z.object({
   format: z.enum(["mp3", "aiff", "flac"]).nullable(),
   cues: z.array(cueSchema),
   loops: z.array(loopSchema),
+  cue_loops: z.array(loopSchema),
   track_color: z.string().nullable(),
   bpm_locked: z.boolean().nullable(),
   generation: z.string(),
@@ -85,6 +86,7 @@ export async function getTrackMarkers(
       format: null,
       cues: [],
       loops: [],
+      cue_loops: [],
       track_color: null,
       bpm_locked: null,
       generation: handle.snapshot.generation,
@@ -116,6 +118,7 @@ export async function getTrackMarkers(
     const { markers, problems } = read.parsed;
     result.cues = markers.cues;
     result.loops = markers.loops;
+    result.cue_loops = markers.cue_loops;
     result.track_color = markers.track_color;
     result.bpm_locked = markers.bpm_locked;
     for (const p of problems) warnings.push({ code: p.code, message: p.message });
