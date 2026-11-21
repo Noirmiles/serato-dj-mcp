@@ -112,7 +112,7 @@ Add options after `serato-dj-mcp` in `args`, for example
   as forward slashes.
 - `--allow-writes` — crate writing, see below.
 - `--allow-raw-sql` — adds `run_sql`, read-only SQL for developers.
-- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open` and `serato_rescan`,
+- `--allow-serato-control` — Windows only: adds `serato_status`, `serato_close`, `serato_open`, `serato_rescan` and `serato_analyze`,
   see [Controlling Serato (Windows)](#controlling-serato-windows).
 
 All options are listed under [Options](#options).
@@ -267,6 +267,9 @@ With `--allow-serato-control`, on Windows only:
 - `serato_close` — gracefully close Serato (needs `confirm: true`), see below.
 - `serato_open` — start Serato and wait until its window is ready.
 - `serato_rescan` — press Serato's Re-Scan File Info button (whole library), see below.
+- `serato_analyze` — have Serato DJ Pro 5 analyse (Lucid Beatgrids) one named crate, in two steps
+  (plan, then confirm with a token), and wait until the files' tags change. Not live-tested; see
+  [docs/serato-control.md](docs/serato-control.md#analysing-a-crate-serato_analyze).
 
 ## Controlling Serato (Windows)
 

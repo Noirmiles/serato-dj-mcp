@@ -15,7 +15,7 @@ Usage: serato-dj-mcp [options]
   --state-dir <dir>    Where backups and manifests go (NOT safe to delete)
   --allow-raw-sql      Register run_sql
   --allow-writes       Register stage_crate, stage_add_to_crate, preview_changes, apply_changes, discard_changes
-  --allow-serato-control  Windows only: register serato_status, serato_close, serato_open, serato_rescan
+  --allow-serato-control  Windows only: register serato_status, serato_close, serato_open, serato_rescan, serato_analyze
   -h, --help           Show this help
   -V, --version        Show the version
 

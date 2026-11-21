@@ -103,6 +103,12 @@ const EXPECTED: Record<
     idempotent: false,
     title: "Re-scan file info in Serato DJ Pro",
   },
+  serato_analyze: {
+    readOnly: false,
+    destructive: false,
+    idempotent: false,
+    title: "Analyse a crate's beatgrids in Serato DJ Pro 5",
+  },
   run_sql: { readOnly: true, destructive: false, idempotent: true, title: "Run read-only SQL" },
   stage_crate: { readOnly: false, destructive: false, idempotent: false, title: "Stage a crate" },
   stage_add_to_crate: {

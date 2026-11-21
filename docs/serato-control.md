@@ -15,8 +15,8 @@ for example in your client's settings:
 "args": ["-y", "serato-dj-mcp", "--allow-serato-control"]
 ```
 
-On macOS and Linux the flag does nothing. On Windows it adds these four tools:
-`serato_status`, `serato_close`, `serato_open` and `serato_rescan`.
+On macOS and Linux the flag does nothing. On Windows it adds these tools:
+`serato_status`, `serato_close`, `serato_open`, `serato_rescan` and `serato_analyze`.
 
 ## What each tool does
 
@@ -141,6 +141,67 @@ verified, and how long it took. The results are recorded in
 
 Rescanning only some folders, by dragging them onto the button, is a stretch goal. It is **not
 done**. Nothing was built or tested for it.
+
+## Analysing a crate (`serato_analyze`)
+
+`serato_analyze` makes Serato DJ Pro 5 analyse (Lucid Beatgrids) the files of **one named crate** and
+waits until it is finished. Windows only, behind `--allow-serato-control`.
+
+**Input:** `crate`, `mode` (`fixed` or `flexible`), `resolution` (`bars` or `beats`, required for
+flexible, not allowed for fixed), `set_mode` (default false), `confirm`, `confirm_token`,
+`timeout_seconds` (default 600, max 3600). `files` is accepted by the schema (exactly one of `files`
+and `crate`), but see the decision below.
+
+**Decision: loose file lists.** Serato analyses what is selected in its own crate view. Selecting
+arbitrary files would need drag and drop or multi-select driving, which this server does not do. So a
+`files` list returns `not_supported`; put the files in a crate and pass `crate`. (The command line's
+`--file` flag exists only to give the same answer.)
+
+**Two steps.** A call without `confirm: true` touches nothing in Serato. It reads the crate's tracks
+from the library, runs the checks and returns a plan: `files`, `count`, `mode`, `resolution`,
+`locked_files`, `over_cap`, `refusals` and a `confirm_token` (a hash of the plan). Running needs
+`confirm: true` and that token; a different token is `plan_changed`, a missing one is
+`confirm_token_required`.
+
+**Safety.** Error codes: `whole_library_refused` (names such as All Audio, Library, root; the target
+is always one crate), `files_missing` (a file is gone or not a local file), `audio_playing` (the same
+check `serato_close` uses, at plan time and again before clicking), `mode_mismatch`,
+`mode_unverifiable`, `not_supported` (not Windows, or loose files), `analyze_ui_not_found`,
+`confirm_token_required`, `plan_changed`. Two things are only listed under `refusals` in the plan and
+then run because the confirming call accepted them: `over_cap` (more than 50 files) and
+`locked_files` (beatgrid locked, by the Markers2 `BPMLOCK` flag or the library's
+`is_beatgrid_locked`; Serato may leave these unchanged).
+
+**How it runs.** Opens Serato if needed (`serato_open`), opens Setup and either verifies the analysis
+mode (`set_mode: false`) or clicks the wanted options (`set_mode: true`), closes Setup, clicks the
+crate in the crate list, then clicks the Analyze Files button (opening the Files panel first if
+needed). All of it by OCR of the Serato window and real mouse clicks, with the matchers in
+`src/control/analyze-match.ts`. A radio button's state is graphics, so reading the current mode only
+works if OCR happens to return a filled-radio glyph before the label; otherwise the answer is
+`mode_unverifiable` and the caller must use `set_mode: true` or set it by hand.
+
+**Waiting.** Before the click, each file's modification time and `serato_read_grid` result are
+recorded. Every 2 seconds each file is checked again; a file counts as changed when either differs.
+The wait ends when all files changed (`all_changed`), or 30 seconds pass with no further change after
+at least one (`quiet`), or the timeout (`timeout`, with `timed_out: true`). Per file the result has
+`changed`, `before_uses` and `after` (`serato5_uses`, `marker_count`, `first_tempo`).
+
+**Not live-tested.** Nothing here has been run against Serato. The Setup layout, the option labels,
+the position of the Analyze Files button, whether the click analyses only the selected crate, what
+Serato changes in the tags and how long it takes are all assumptions. The tests use a fake platform
+and fake screenshots.
+
+### Live check (not run)
+
+Only on copies in `C:/Development/Projects/CrateShipTest/`, and only after the coordinator says
+library repair #377 is applied:
+
+1. Put a few MP3s in a test crate of the copied library; note their `control-cli read-grid` output.
+2. Stage: `control-cli analyze --crate NAME --mode flexible --resolution bars`, and read the plan.
+3. Run with `--set-mode --confirm --token T`; watch Setup open, the option clicks, Setup close.
+4. Check the crate was selected, the analysis button was clicked, and each file's `changed`.
+5. Repeat without `--set-mode` to see whether the current mode can be read (`mode_unverifiable` is
+   the likely answer).
 
 ## Planned follow-up: DJCrateTool
 
